@@ -19,15 +19,16 @@ const SCANNER_CONFIG = {
   inputStream: {
     name: "Live",
     type: "LiveStream",
+    // Constraints corregidas para getUserMedia
     constraints: {
-      // Resolución optimizada
-      width: { min: 640, ideal: 1280, max: 1920 },
-      height: { min: 480, ideal: 720, max: 1080 },
-      facingMode: "environment",
-      // Optimizaciones de cámara
-      focusMode: "continuous",
-      whiteBalanceMode: "continuous",
-      exposureMode: "continuous"
+      video: {
+        // Resolución optimizada
+        width: { min: 640, ideal: 1280, max: 1920 },
+        height: { min: 480, ideal: 720, max: 1080 },
+        facingMode: "environment"
+        // Nota: focusMode, whiteBalanceMode, exposureMode se aplican después
+      },
+      audio: false // Explícitamente no queremos audio
     },
     area: {
       top: "35%",
