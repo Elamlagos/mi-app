@@ -1,5 +1,67 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
+// Configuración estable fuera del componente para evitar re-renders
+const SCANNER_CONFIG = {
+  // Múltiples workers para paralelización
+  numOfWorkers: navigator.hardwareConcurrency || 4,
+  
+  // Frecuencia alta para tiempo real (25-30 FPS)
+  frequency: 30,
+  
+  // Área de detección optimizada - pequeña y centrada
+  area: {
+    top: "35%",    // Área más pequeña
+    right: "25%",
+    left: "25%", 
+    bottom: "35%"
+  },
+  
+  inputStream: {
+    name: "Live",
+    type: "LiveStream",
+    constraints: {
+      // Resolución optimizada
+      width: { min: 640, ideal: 1280, max: 1920 },
+      height: { min: 480, ideal: 720, max: 1080 },
+      facingMode: "environment",
+      // Optimizaciones de cámara
+      focusMode: "continuous",
+      whiteBalanceMode: "continuous",
+      exposureMode: "continuous"
+    },
+    area: {
+      top: "35%",
+      right: "25%", 
+      left: "25%",
+      bottom: "35%"
+    },
+    singleChannel: false // Usar todos los canales de color
+  },
+  
+  // Localización optimizada
+  locator: {
+    patchSize: "x-small", // Optimizado para códigos pequeños/lejanos
+    halfSample: true       // Optimización de rendimiento
+  },
+  
+  // Múltiples decoders para códigos de 6 dígitos
+  decoder: {
+    readers: [
+      "ean_8_reader",     // EAN-8 (códigos de 8 dígitos, incluye 6)
+      "code_128_reader",   // CODE128 (puede manejar cualquier longitud)
+      "code_39_reader",    // CODE39 (común en inventarios)
+      "upc_e_reader",      // UPC-E (códigos compactos)
+      "ean_reader"         // EAN-13 (por si el código es parte de uno mayor)
+    ],
+    multiple: false // Solo un código a la vez para mejor precisión
+  },
+  
+  // Sin localización si sabemos la posición (mejor rendimiento)
+  locate: false, // Desactivamos para mejor rendimiento ya que guiamos al usuario
+  
+  debug: false
+};
+
 const ProfessionalBarcodeScanner = ({ onCodeDetected, onError, isActive = false }) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -9,68 +71,6 @@ const ProfessionalBarcodeScanner = ({ onCodeDetected, onError, isActive = false 
   const [status, setStatus] = useState('idle');
   const [confidence, setConfidence] = useState(0);
   const [attempts, setAttempts] = useState(0);
-
-  // Configuración optimizada para códigos de 6 dígitos
-  const SCANNER_CONFIG = {
-    // Múltiples workers para paralelización
-    numOfWorkers: navigator.hardwareConcurrency || 4,
-    
-    // Frecuencia alta para tiempo real (25-30 FPS)
-    frequency: 30,
-    
-    // Área de detección optimizada - pequeña y centrada
-    area: {
-      top: "35%",    // Área más pequeña
-      right: "25%",
-      left: "25%", 
-      bottom: "35%"
-    },
-    
-    inputStream: {
-      name: "Live",
-      type: "LiveStream",
-      constraints: {
-        // Resolución optimizada
-        width: { min: 640, ideal: 1280, max: 1920 },
-        height: { min: 480, ideal: 720, max: 1080 },
-        facingMode: "environment",
-        // Optimizaciones de cámara
-        focusMode: "continuous",
-        whiteBalanceMode: "continuous",
-        exposureMode: "continuous"
-      },
-      area: {
-        top: "35%",
-        right: "25%", 
-        left: "25%",
-        bottom: "35%"
-      },
-      singleChannel: false // Usar todos los canales de color
-    },
-    
-    // Localización optimizada
-    locator: {
-      patchSize: "x-small", // Optimizado para códigos pequeños/lejanos
-      halfSample: true       // Optimización de rendimiento
-    },
-    
-    // Múltiples decoders para códigos de 6 dígitos
-    decoder: {
-      readers: [
-        "ean_8_reader",     // EAN-8 (códigos de 8 dígitos, incluye 6)
-        "code_128_reader",   // CODE128 (puede manejar cualquier longitud)
-        "code_39_reader",    // CODE39 (común en inventarios)
-        "upc_e_reader",      // UPC-E (códigos compactos)
-        "ean_reader"         // EAN-13 (por si el código es parte de uno mayor)
-      ],
-      multiple: false // Solo un código a la vez para mejor precisión
-    },
-    
-    // Sin localización si sabemos la posición (mejor rendimiento)
-    locate: false, // Desactivamos para mejor rendimiento ya que guiamos al usuario
-    
-    debug: false
-  };
 
   // Limpiar recursos de forma segura
   const cleanup = useCallback(() => {
