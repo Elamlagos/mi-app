@@ -332,62 +332,79 @@ const CreatePlate = ({ onNavigate }) => {
     return data.downloadUrl;
   };
 
+  // FUNCIÓN CORREGIDA: Generar código de barras
   const generateBarcodeImage = (plateId, idVisual) => {
     return new Promise((resolve, reject) => {
       try {
-        // Crear canvas temporal
-        const canvas = document.createElement('canvas');
+        // Verificar que JsBarcode esté disponible
+        if (!window.JsBarcode) {
+          reject(new Error('JsBarcode no está disponible. Verifica que esté cargado en index.html'));
+          return;
+        }
         
-        // Generar código de barras CODE128 basado en el ID de 6 dígitos
-        window.JsBarcode(canvas, plateId.toString(), {
+        console.log('📊 Generando código de barras para ID:', plateId, 'Visual:', idVisual);
+        
+        // Crear canvas temporal para el código de barras
+        const tempCanvas = document.createElement('canvas');
+        
+        // Generar código de barras CODE128 
+        window.JsBarcode(tempCanvas, plateId.toString(), {
           format: "CODE128",
           width: 2,
-          height: 60, // Altura más corta (antes era 100)
-          displayValue: false, // No mostrar el número automáticamente
+          height: 80,
+          displayValue: false,
           background: "#ffffff",
           lineColor: "#000000",
-          margin: 10
+          margin: 5
         });
 
-        // Crear un nuevo canvas más grande para incluir el ID visual arriba
+        // Crear canvas final más grande
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
         
-        // Configurar el canvas final
+        // Configurar dimensiones
         const padding = 20;
-        const textHeight = 25; // Espacio para el texto arriba
-        finalCanvas.width = canvas.width + (padding * 2);
-        finalCanvas.height = canvas.height + textHeight + (padding * 2);
+        const textHeight = 30;
+        finalCanvas.width = Math.max(tempCanvas.width + (padding * 2), 300);
+        finalCanvas.height = tempCanvas.height + textHeight + (padding * 2) + 20;
         
         // Fondo blanco
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
         
-        // Agregar el ID visual ARRIBA del código de barras
+        // Texto ID visual arriba
         ctx.fillStyle = '#000000';
-        ctx.font = '18px Arial';
+        ctx.font = 'bold 16px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(
-          idVisual, 
-          finalCanvas.width / 2, 
-          padding + 15 // Posición arriba del código
-        );
+        ctx.fillText(idVisual, finalCanvas.width / 2, padding + 18);
         
-        // Dibujar el código de barras debajo del texto
-        ctx.drawImage(canvas, padding, padding + textHeight);
+        // Dibujar código de barras centrado
+        const x = (finalCanvas.width - tempCanvas.width) / 2;
+        const y = padding + textHeight;
+        ctx.drawImage(tempCanvas, x, y);
+        
+        // Número del código abajo
+        ctx.font = '14px Arial';
+        ctx.fillText(plateId.toString(), finalCanvas.width / 2, finalCanvas.height - 10);
         
         // Convertir a base64
         const base64Data = finalCanvas.toDataURL('image/png').split(',')[1];
+        
+        console.log('✅ Código de barras generado exitosamente');
         resolve(base64Data);
         
       } catch (error) {
-        reject(error);
+        console.error('❌ Error generando código de barras:', error);
+        reject(new Error(`Error generando código de barras: ${error.message}`));
       }
     });
   };
 
+  // FUNCIÓN CORREGIDA: Subir código de barras a GitHub
   const uploadBarcodeToGitHub = async (plateId, idTema, idSubtema, base64Data) => {
     try {
+      console.log('📤 Subiendo código de barras a GitHub...');
+      
       const { data, error } = await supabase.functions.invoke('upload-github-image', {
         body: {
           idTema: idTema,
@@ -400,15 +417,26 @@ const CreatePlate = ({ onNavigate }) => {
         }
       });
 
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || 'Error subiendo código de barras');
+      if (error) {
+        console.error('❌ Error en función Edge:', error);
+        throw error;
+      }
+      
+      if (!data?.success) {
+        console.error('❌ Función Edge falló:', data);
+        throw new Error(data?.error || 'Error subiendo código de barras a GitHub');
+      }
 
+      console.log('✅ Código de barras subido exitosamente:', data.downloadUrl);
       return data.downloadUrl;
+      
     } catch (error) {
+      console.error('❌ Error completo subiendo código de barras:', error);
       throw new Error(`Error subiendo código de barras: ${error.message}`);
     }
   };
 
+  // FUNCIÓN CORREGIDA: Submit principal
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isReserved || !plateId) {
@@ -425,54 +453,80 @@ const CreatePlate = ({ onNavigate }) => {
       setSaving(true);
       setError('');
 
+      console.log('💾 Iniciando proceso de guardado...');
+
       // VALIDACIÓN FINAL: Verificar que el ID visual sigue disponible
-      console.log('Verificando disponibilidad final del ID visual:', idVisual);
+      console.log('🔍 Verificando disponibilidad final del ID visual:', idVisual);
       const { data: existingPlates, error: validationError } = await supabase
         .from('placas')
         .select('id, id_visual')
         .eq('id_visual', idVisual)
-        .neq('id', plateId); // Excluir la placa actual
+        .neq('id', plateId);
 
       if (validationError) {
         throw new Error(`Error verificando ID visual: ${validationError.message}`);
       }
 
       if (existingPlates && existingPlates.length > 0) {
-        setError(`El ID visual "${idVisual}" ya está en uso por otra placa. Por favor, cambia el número y vuelve a intentar.`);
+        setError(`El ID visual "${idVisual}" ya está en uso. Por favor, cambia el número.`);
         setSaving(false);
-        return; // NO continuar con el guardado
+        return;
       }
 
-      console.log('ID visual disponible, continuando con el guardado...');
+      console.log('✅ ID visual disponible, continuando...');
 
       let imagenMacroUrl = null;
       let imagenesMicroUrls = [];
       let codigoBarraUrl = null;
 
-      // Generar y subir código de barras
+      // GENERAR Y SUBIR CÓDIGO DE BARRAS - CON MEJOR MANEJO DE ERRORES
       try {
+        console.log('📊 Iniciando generación de código de barras...');
         const barcodeBase64 = await generateBarcodeImage(plateId, idVisual);
+        
+        console.log('📤 Subiendo código de barras...');
         codigoBarraUrl = await uploadBarcodeToGitHub(plateId, selectedTema, selectedSubtema, barcodeBase64);
-      } catch (error) {
-        console.error('Error generando código de barras:', error);
-        // Continuar sin código de barras si falla
+        
+        console.log('✅ Código de barras procesado exitosamente');
+      } catch (barcodeError) {
+        console.error('❌ Error procesando código de barras:', barcodeError);
+        
+        // NO fallar todo el proceso, solo mostrar advertencia
+        const warningMsg = `Advertencia: No se pudo generar el código de barras (${barcodeError.message}). La placa se guardará sin código de barras.`;
+        console.warn('⚠️', warningMsg);
+        
+        // Mostrar advertencia pero continuar
+        setError(warningMsg);
       }
 
       // Subir imagen macro si existe
       if (imagenMacro) {
-        imagenMacroUrl = await uploadImage(imagenMacro, 'macro');
+        try {
+          console.log('📤 Subiendo imagen macro...');
+          imagenMacroUrl = await uploadImage(imagenMacro, 'macro');
+          console.log('✅ Imagen macro subida');
+        } catch (macroError) {
+          console.warn('⚠️ Error subiendo imagen macro:', macroError);
+        }
       }
 
       // Subir imágenes micro si existen
       if (imagenesMicro.length > 0) {
-        for (const imagen of imagenesMicro) {
-          const url = await uploadImage(imagen, 'micro');
-          imagenesMicroUrls.push(url);
+        try {
+          console.log(`📤 Subiendo ${imagenesMicro.length} imágenes microscópicas...`);
+          for (const imagen of imagenesMicro) {
+            const url = await uploadImage(imagen, 'micro');
+            imagenesMicroUrls.push(url);
+          }
+          console.log('✅ Imágenes microscópicas subidas');
+        } catch (microError) {
+          console.warn('⚠️ Error subiendo imágenes microscópicas:', microError);
         }
       }
 
-      // Actualizar la placa reservada con todos los datos
-      const { error } = await supabase
+      // GUARDAR EN BASE DE DATOS
+      console.log('💾 Guardando placa en base de datos...');
+      const { error: dbError } = await supabase
         .from('placas')
         .update({
           id_tema: selectedTema,
@@ -484,10 +538,10 @@ const CreatePlate = ({ onNavigate }) => {
           observaciones: observaciones,
           imagen_macro_url: imagenMacroUrl,
           imagen_micro_url: imagenesMicroUrls,
-          codigo_barra_txt: plateId.toString(), // Guardar el ID como texto del código
-          codigo_barra_url: codigoBarraUrl, // Guardar la URL de la imagen
-          actividad: 'guardada', // Nueva columna actividad
-          reserva: 'completada', // Cambiar de 'reservado' a 'completada'
+          codigo_barra_txt: plateId.toString(),
+          codigo_barra_url: codigoBarraUrl,
+          actividad: 'guardada',
+          reserva: 'completada',
           id_responsable: user?.id,
           id_creador: user?.id,
           id_editor: user?.id,
@@ -497,12 +551,24 @@ const CreatePlate = ({ onNavigate }) => {
         })
         .eq('id', plateId);
 
-      if (error) throw error;
+      if (dbError) {
+        console.error('❌ Error guardando en base de datos:', dbError);
+        throw dbError;
+      }
 
-      alert('Placa creada exitosamente con código de barras');
+      console.log('✅ Placa guardada exitosamente');
+
+      // Mensaje de éxito apropiado
+      if (codigoBarraUrl) {
+        alert('✅ Placa creada exitosamente con código de barras');
+      } else {
+        alert('✅ Placa creada exitosamente (sin código de barras - revisa la configuración)');
+      }
+      
       onNavigate('inventario-placas');
 
     } catch (error) {
+      console.error('❌ Error completo guardando placa:', error);
       setError(`Error guardando placa: ${error.message}`);
     } finally {
       setSaving(false);
@@ -553,40 +619,103 @@ const CreatePlate = ({ onNavigate }) => {
       
       <h2>Crear Nueva Placa</h2>
 
-      {error && <div style={{color: 'red'}}>{error}</div>}
-
-      {isReserved && (
-        <div>
-          <h4>ID Reservado: {plateId}</h4>
-          <button onClick={startOver}>Empezar de Nuevo</button>
-          <p><strong>Nota:</strong> No puedes cambiar tema o subtema. Si necesitas hacerlo, debes empezar de nuevo.</p>
+      {error && (
+        <div style={{
+          color: error.includes('Advertencia') ? '#856404' : 'red',
+          backgroundColor: error.includes('Advertencia') ? '#fff3cd' : '#f8d7da',
+          padding: '10px',
+          borderRadius: '5px',
+          border: `1px solid ${error.includes('Advertencia') ? '#ffeaa7' : '#f5c6cb'}`,
+          marginBottom: '15px'
+        }}>
+          {error}
         </div>
       )}
 
-      <div>
-        <h4>Selección Actual:</h4>
-        <p>Tema: {selectedTema ? `${selectedTema} - ${getSelectedTemaData()?.nombre}` : 'No seleccionado'}</p>
-        <p>Subtema: {selectedSubtema ? `${selectedSubtema} - ${getSelectedSubtemaData()?.nombre}` : 'No seleccionado'}</p>
-        <p>Tinción: {selectedTincion ? `${selectedTincion} - ${getSelectedTincionData()?.nombre}` : 'No seleccionado'}</p>
-        <p>Estado: {selectedEstado || 'No seleccionado'}</p>
-        {plateId && <p>ID Placa: {plateId}</p>}
-        {idVisual && <p>ID Visual: {idVisual}</p>}
+      {isReserved && (
+        <div style={{
+          backgroundColor: '#d4edda',
+          color: '#155724',
+          padding: '15px',
+          borderRadius: '5px',
+          marginBottom: '15px'
+        }}>
+          <h4>✅ ID Reservado: {plateId}</h4>
+          <button 
+            onClick={startOver}
+            style={{
+              backgroundColor: '#dc3545',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Empezar de Nuevo
+          </button>
+          <p style={{ marginTop: '10px', marginBottom: '0' }}>
+            <strong>Nota:</strong> No puedes cambiar tema o subtema. Si necesitas hacerlo, debes empezar de nuevo.
+          </p>
+        </div>
+      )}
+
+      <div style={{
+        backgroundColor: '#f8f9fa',
+        padding: '15px',
+        borderRadius: '5px',
+        marginBottom: '20px'
+      }}>
+        <h4>📋 Selección Actual:</h4>
+        <p><strong>Tema:</strong> {selectedTema ? `${selectedTema} - ${getSelectedTemaData()?.nombre}` : '❌ No seleccionado'}</p>
+        <p><strong>Subtema:</strong> {selectedSubtema ? `${selectedSubtema} - ${getSelectedSubtemaData()?.nombre}` : '❌ No seleccionado'}</p>
+        <p><strong>Tinción:</strong> {selectedTincion ? `${selectedTincion} - ${getSelectedTincionData()?.nombre}` : '❌ No seleccionado'}</p>
+        <p><strong>Estado:</strong> {selectedEstado || '❌ No seleccionado'}</p>
+        {plateId && <p><strong>ID Placa:</strong> {plateId}</p>}
+        {idVisual && <p><strong>ID Visual:</strong> {idVisual}</p>}
       </div>
 
       {/* Acordeón de Temas */}
-      <div>
+      <div style={{ marginBottom: '15px' }}>
         <button 
           onClick={() => !isReserved && setOpenTemaAccordion(!openTemaAccordion)}
           disabled={isReserved}
+          style={{
+            width: '100%',
+            padding: '12px',
+            backgroundColor: selectedTema ? '#28a745' : '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: isReserved ? 'not-allowed' : 'pointer',
+            fontSize: '16px'
+          }}
         >
-          {selectedTema ? `Tema: ${selectedTema} - ${getSelectedTemaData()?.nombre}` : 'Seleccionar Tema'}
+          {selectedTema ? `✅ Tema: ${selectedTema} - ${getSelectedTemaData()?.nombre}` : '📂 Seleccionar Tema'}
           {!isReserved && (openTemaAccordion ? ' ▲' : ' ▼')}
         </button>
 
         {openTemaAccordion && !isReserved && (
-          <div>
+          <div style={{
+            border: '1px solid #ddd',
+            borderRadius: '5px',
+            marginTop: '5px',
+            maxHeight: '200px',
+            overflowY: 'auto'
+          }}>
             {temas.map((tema) => (
-              <div key={tema.id_tema} onClick={() => handleTemaSelect(tema)}>
+              <div 
+                key={tema.id_tema} 
+                onClick={() => handleTemaSelect(tema)}
+                style={{
+                  padding: '10px',
+                  borderBottom: '1px solid #eee',
+                  cursor: 'pointer',
+                  backgroundColor: 'white'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+              >
                 <strong>{tema.id_tema}</strong> - {tema.nombre} (Caja: {tema.caja})
               </div>
             ))}
@@ -596,19 +725,46 @@ const CreatePlate = ({ onNavigate }) => {
 
       {/* Acordeón de Subtemas */}
       {selectedTema && (
-        <div>
+        <div style={{ marginBottom: '15px' }}>
           <button 
             onClick={() => !isReserved && setOpenSubtemaAccordion(!openSubtemaAccordion)}
             disabled={isReserved}
+            style={{
+              width: '100%',
+              padding: '12px',
+              backgroundColor: selectedSubtema ? '#28a745' : '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: isReserved ? 'not-allowed' : 'pointer',
+              fontSize: '16px'
+            }}
           >
-            {selectedSubtema ? `Subtema: ${selectedSubtema} - ${getSelectedSubtemaData()?.nombre}` : 'Seleccionar Subtema'}
+            {selectedSubtema ? `✅ Subtema: ${selectedSubtema} - ${getSelectedSubtemaData()?.nombre}` : '📁 Seleccionar Subtema'}
             {!isReserved && (openSubtemaAccordion ? ' ▲' : ' ▼')}
           </button>
 
           {openSubtemaAccordion && !isReserved && (
-            <div>
+            <div style={{
+              border: '1px solid #ddd',
+              borderRadius: '5px',
+              marginTop: '5px',
+              maxHeight: '200px',
+              overflowY: 'auto'
+            }}>
               {subtemas.map((subtema) => (
-                <div key={`${subtema.id_tema}-${subtema.id_subtema}`} onClick={() => handleSubtemaSelect(subtema)}>
+                <div 
+                  key={`${subtema.id_tema}-${subtema.id_subtema}`} 
+                  onClick={() => handleSubtemaSelect(subtema)}
+                  style={{
+                    padding: '10px',
+                    borderBottom: '1px solid #eee',
+                    cursor: 'pointer',
+                    backgroundColor: 'white'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                >
                   <strong>{subtema.id_subtema}</strong> - {subtema.nombre}
                 </div>
               ))}
@@ -621,24 +777,68 @@ const CreatePlate = ({ onNavigate }) => {
       {isReserved && (
         <>
           {/* Acordeón de Tinciones */}
-          <div>
-            <button onClick={() => setOpenTincionAccordion(!openTincionAccordion)}>
-              {selectedTincion ? `Tinción: ${getSelectedTincionData()?.nombre}` : 'Seleccionar Tinción'}
+          <div style={{ marginBottom: '15px' }}>
+            <button 
+              onClick={() => setOpenTincionAccordion(!openTincionAccordion)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                backgroundColor: selectedTincion ? '#28a745' : '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              {selectedTincion ? `✅ Tinción: ${getSelectedTincionData()?.nombre}` : '🧪 Seleccionar Tinción'}
               {openTincionAccordion ? ' ▲' : ' ▼'}
             </button>
 
             {openTincionAccordion && (
-              <div>
-                <h5>Tinciones Normales</h5>
+              <div style={{
+                border: '1px solid #ddd',
+                borderRadius: '5px',
+                marginTop: '5px',
+                maxHeight: '300px',
+                overflowY: 'auto'
+              }}>
+                <div style={{ padding: '10px', backgroundColor: '#f8f9fa', fontWeight: 'bold' }}>
+                  Tinciones Normales
+                </div>
                 {tinciones.filter(t => t.tipo === 'normal').map((tincion) => (
-                  <div key={tincion.id_tincion} onClick={() => handleTincionSelect(tincion)}>
+                  <div 
+                    key={tincion.id_tincion} 
+                    onClick={() => handleTincionSelect(tincion)}
+                    style={{
+                      padding: '10px',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer',
+                      backgroundColor: 'white'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
                     <strong>ID: {tincion.id_tincion}</strong> - {tincion.nombre}
                   </div>
                 ))}
 
-                <h5>Tinciones Especiales</h5>
+                <div style={{ padding: '10px', backgroundColor: '#f8f9fa', fontWeight: 'bold' }}>
+                  Tinciones Especiales
+                </div>
                 {tinciones.filter(t => t.tipo === 'especial').map((tincion) => (
-                  <div key={tincion.id_tincion} onClick={() => handleTincionSelect(tincion)}>
+                  <div 
+                    key={tincion.id_tincion} 
+                    onClick={() => handleTincionSelect(tincion)}
+                    style={{
+                      padding: '10px',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer',
+                      backgroundColor: 'white'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
                     <strong>ID: {tincion.id_tincion}</strong> - {tincion.nombre}
                   </div>
                 ))}
@@ -647,16 +847,44 @@ const CreatePlate = ({ onNavigate }) => {
           </div>
 
           {/* Acordeón de Estado */}
-          <div>
-            <button onClick={() => setOpenEstadoAccordion(!openEstadoAccordion)}>
-              {selectedEstado ? `Estado: ${selectedEstado}` : 'Seleccionar Estado'}
+          <div style={{ marginBottom: '20px' }}>
+            <button 
+              onClick={() => setOpenEstadoAccordion(!openEstadoAccordion)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                backgroundColor: selectedEstado ? '#28a745' : '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              {selectedEstado ? `✅ Estado: ${selectedEstado}` : '📊 Seleccionar Estado'}
               {openEstadoAccordion ? ' ▲' : ' ▼'}
             </button>
 
             {openEstadoAccordion && (
-              <div>
+              <div style={{
+                border: '1px solid #ddd',
+                borderRadius: '5px',
+                marginTop: '5px'
+              }}>
                 {estadosPlaca.map((estado) => (
-                  <div key={estado} onClick={() => handleEstadoSelect(estado)}>
+                  <div 
+                    key={estado} 
+                    onClick={() => handleEstadoSelect(estado)}
+                    style={{
+                      padding: '12px',
+                      borderBottom: '1px solid #eee',
+                      cursor: 'pointer',
+                      backgroundColor: 'white',
+                      textTransform: 'capitalize'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
                     {estado}
                   </div>
                 ))}
@@ -665,70 +893,136 @@ const CreatePlate = ({ onNavigate }) => {
           </div>
 
           {/* Campos editables */}
-          <div>
-            <label>ID Visual:</label>
-            <input 
-              type="text" 
-              value={`${selectedTema}-${selectedSubtema}-`} 
-              disabled 
-            />
-            <input 
-              type="number" 
-              min="1" 
-              max="999"
-              value={idVisualNumber}
-              onChange={handleIdVisualNumberChange}
-              placeholder="001"
-            />
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+              🏷️ ID Visual:
+            </label>
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <input 
+                type="text" 
+                value={`${selectedTema}-${selectedSubtema}-`} 
+                disabled 
+                style={{
+                  padding: '8px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  backgroundColor: '#f8f9fa'
+                }}
+              />
+              <input 
+                type="number" 
+                min="1" 
+                max="999"
+                value={idVisualNumber}
+                onChange={handleIdVisualNumberChange}
+                placeholder="001"
+                style={{
+                  padding: '8px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  width: '80px'
+                }}
+              />
+            </div>
           </div>
 
-          <div>
-            <label>Caja:</label>
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+              📦 Caja:
+            </label>
             <input 
               type="number" 
               value={caja}
               onChange={(e) => setCaja(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '4px'
+              }}
             />
           </div>
 
-          <div>
-            <label>Observaciones:</label>
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+              📝 Observaciones:
+            </label>
             <textarea 
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}
               rows="3"
               placeholder="Observaciones opcionales..."
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                resize: 'vertical'
+              }}
             />
           </div>
 
-          <div>
-            <label>Imagen Macro (opcional):</label>
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+              🖼️ Imagen Macro (opcional):
+            </label>
             <input 
               type="file" 
               accept="image/*"
               onChange={handleImageMacroChange}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '4px'
+              }}
             />
-            {imagenMacro && <p>Archivo seleccionado: {imagenMacro.name}</p>}
+            {imagenMacro && (
+              <p style={{ color: '#28a745', marginTop: '5px' }}>
+                ✅ Archivo seleccionado: {imagenMacro.name}
+              </p>
+            )}
           </div>
 
-          <div>
-            <label>Imágenes Microscópicas (máximo 10):</label>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+              🔬 Imágenes Microscópicas (máximo 10):
+            </label>
             <input 
               type="file" 
               accept="image/*"
               multiple
               onChange={handleImagenesMicroChange}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #ddd',
+                borderRadius: '4px'
+              }}
             />
             {imagenesMicro.length > 0 && (
-              <p>Archivos seleccionados: {imagenesMicro.length}</p>
+              <p style={{ color: '#28a745', marginTop: '5px' }}>
+                ✅ Archivos seleccionados: {imagenesMicro.length}
+              </p>
             )}
           </div>
 
           <button 
             onClick={handleSubmit}
             disabled={saving || !selectedTincion || !selectedEstado}
+            style={{
+              width: '100%',
+              padding: '15px',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              backgroundColor: saving ? '#6c757d' : (!selectedTincion || !selectedEstado) ? '#ccc' : '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: saving || !selectedTincion || !selectedEstado ? 'not-allowed' : 'pointer'
+            }}
           >
-            {saving ? 'Guardando...' : 'Crear Placa'}
+            {saving ? '⏳ Guardando...' : '💾 Crear Placa'}
           </button>
         </>
       )}

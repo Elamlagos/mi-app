@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import ProfessionalBarcodeScanner from './ProfessionalBarcodeScanner';
+import WorkingBarcodeScanner from './WorkingBarcodeScanner';
 
 const PlateWithdrawal = ({ onNavigate }) => {
   const [isScanning, setIsScanning] = useState(false);
@@ -25,24 +25,22 @@ const PlateWithdrawal = ({ onNavigate }) => {
     checkQuagga();
   }, []);
 
-  // Manejar código escaneado con optimizaciones profesionales
+  // Manejar código escaneado simple
   const handleCodeScanned = async (code) => {
     try {
       setLoading(true);
       setError('');
       setScannedCode(code);
-      setIsScanning(false); // Detener la cámara inmediatamente
+      setIsScanning(false);
       
-      console.log('🔍 Procesando código escaneado:', code);
+      console.log('🔍 Procesando código:', code);
       
-      // Buscar placa con optimización de consulta
-      const startTime = Date.now();
-      
+      // Buscar placa
       const { data: plate, error: plateError } = await supabase
         .from('placas')
         .select('*')
         .eq('codigo_barra_txt', code)
-        .maybeSingle(); // Usar maybeSingle en lugar de single para mejor manejo
+        .maybeSingle();
       
       if (plateError) {
         console.error('Error buscando placa:', plateError);
@@ -59,65 +57,40 @@ const PlateWithdrawal = ({ onNavigate }) => {
       
       console.log('✅ Placa encontrada:', plate);
       
-      // Buscar datos relacionados en paralelo con mejor manejo de errores
+      // Buscar datos relacionados
       const [temaResult, subtemaResult, tincionResult] = await Promise.allSettled([
-        // Buscar tema
-        supabase
-          .from('temas')
-          .select('nombre, caja')
-          .eq('id_tema', plate.id_tema)
-          .maybeSingle(),
-        
-        // Buscar subtema
-        supabase
-          .from('subtemas')
-          .select('nombre')
-          .eq('id_tema', plate.id_tema)
-          .eq('id_subtema', plate.id_subtema)
-          .maybeSingle(),
-        
-        // Buscar tinción
-        supabase
-          .from('tinciones')
-          .select('nombre, tipo')
-          .eq('id_tincion', plate.id_tincion)
-          .maybeSingle()
+        supabase.from('temas').select('nombre, caja').eq('id_tema', plate.id_tema).maybeSingle(),
+        supabase.from('subtemas').select('nombre').eq('id_tema', plate.id_tema).eq('id_subtema', plate.id_subtema).maybeSingle(),
+        supabase.from('tinciones').select('nombre, tipo').eq('id_tincion', plate.id_tincion).maybeSingle()
       ]);
       
-      // Procesar resultados con manejo robusto de errores
+      // Procesar resultados
       const temaData = temaResult.status === 'fulfilled' && temaResult.value.data 
         ? temaResult.value.data 
-        : { nombre: 'Información no disponible', caja: 'N/A' };
+        : { nombre: 'No disponible', caja: 'N/A' };
       
       const subtemaData = subtemaResult.status === 'fulfilled' && subtemaResult.value.data
         ? subtemaResult.value.data
-        : { nombre: 'Información no disponible' };
+        : { nombre: 'No disponible' };
       
       const tincionData = tincionResult.status === 'fulfilled' && tincionResult.value.data
         ? tincionResult.value.data
-        : { nombre: 'Información no disponible', tipo: 'N/A' };
+        : { nombre: 'No disponible', tipo: 'N/A' };
       
-      // Combinar datos completos
+      // Datos completos
       const completeData = {
         ...plate,
         temas: temaData,
         subtemas: subtemaData,
-        tinciones: tincionData,
-        // Metadata de rendimiento
-        _metadata: {
-          queryTime: Date.now() - startTime,
-          scannedAt: new Date().toISOString()
-        }
+        tinciones: tincionData
       };
       
-      const queryTime = Date.now() - startTime;
-      console.log(`✅ Datos completos obtenidos en ${queryTime}ms`);
-      
+      console.log('✅ Datos completos obtenidos');
       setPlateData(completeData);
       
     } catch (error) {
-      console.error('Error crítico procesando código:', error);
-      setError(`Error crítico del sistema: ${error.message}`);
+      console.error('Error procesando código:', error);
+      setError(`Error: ${error.message}`);
       setPlateData(null);
     } finally {
       setLoading(false);
@@ -174,9 +147,9 @@ const PlateWithdrawal = ({ onNavigate }) => {
           ← Volver al Dashboard
         </button>
         
-        <h2>🚀 Sistema Profesional de Escaneo</h2>
+        <h2>📱 Sistema de Escaneo de Placas</h2>
         <p style={{ color: '#666' }}>
-          Escaneo optimizado con detección multi-algoritmo y validación por consenso
+          Escaneo rápido y confiable de códigos de barras de 6 dígitos
         </p>
       </div>
 
@@ -224,11 +197,10 @@ const PlateWithdrawal = ({ onNavigate }) => {
               border: 'none',
               borderRadius: '10px',
               cursor: 'pointer',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-              background: 'linear-gradient(135deg, #28a745, #20c997)'
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
             }}
           >
-            🚀 Iniciar Escáner Profesional
+            📱 Iniciar Escáner
           </button>
         )}
 
@@ -285,10 +257,10 @@ const PlateWithdrawal = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* Cámara profesional */}
+      {/* Cámara simple */}
       {isScanning && quaggaReady && (
         <div style={{ marginBottom: '30px' }}>
-          <ProfessionalBarcodeScanner
+          <WorkingBarcodeScanner
             isActive={isScanning}
             onCodeDetected={handleCodeScanned}
             onError={handleCameraError}
@@ -438,36 +410,6 @@ const PlateWithdrawal = ({ onNavigate }) => {
               </div>
             </div>
           </div>
-
-          {/* Metadata de rendimiento */}
-          {plateData._metadata && (
-            <div style={{
-              backgroundColor: 'white',
-              padding: '15px',
-              borderRadius: '8px',
-              border: '1px solid #dee2e6',
-              marginTop: '15px'
-            }}>
-              <h5 style={{ 
-                color: '#6c757d', 
-                marginBottom: '10px',
-                fontSize: '14px',
-                borderBottom: '1px solid #dee2e6',
-                paddingBottom: '5px'
-              }}>
-                📊 Información de Rendimiento
-              </h5>
-              <div style={{ 
-                display: 'flex', 
-                gap: '20px', 
-                fontSize: '12px',
-                color: '#495057'
-              }}>
-                <span>⚡ Consulta: {plateData._metadata.queryTime}ms</span>
-                <span>🕐 Escaneado: {new Date(plateData._metadata.scannedAt).toLocaleTimeString()}</span>
-              </div>
-            </div>
-          )}
 
           {/* Observaciones */}
           {plateData.observaciones && (
