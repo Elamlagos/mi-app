@@ -280,7 +280,7 @@ const BarcodeCamera = ({
     }
   }, [focusState]);
 
-  // Efecto principal - SIMPLE y SIN LOOPS
+  // Efecto principal - Con todas las dependencias necesarias
   useEffect(() => {
     mountedRef.current = true;
     
@@ -296,7 +296,7 @@ const BarcodeCamera = ({
       mountedRef.current = false;
       cleanup();
     };
-  }, [isActive]); // SOLO depende de isActive
+  }, [isActive, status, initializeCamera, cleanup]);
 
   // Efecto separado para inicialización cuando el status cambia a idle
   useEffect(() => {
