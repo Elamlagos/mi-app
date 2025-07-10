@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from './lib/supabase';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -17,42 +17,13 @@ function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        await getUserProfile(currentUser.id);
-      }
-      
-      setLoading(false);
-    };
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        
-        if (currentUser) {
-          await getUserProfile(currentUser.id);
-        } else {
-          setUserProfile(null);
-        }
-        
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const getUserProfile = async (userId) => {
+  // Función para obtener perfil de usuario
+  const fetchUserProfile = useCallback(async (userId) => {
     try {
+      console.log('Obteniendo perfil para usuario:', userId);
+      
       const { data, error } = await supabase
         .from('usuarios')
         .select('rol, comite, nombre, apellidos')
@@ -61,97 +32,215 @@ function App() {
 
       if (error) {
         console.error('Error obteniendo perfil:', error);
+        if (error.code === 'PGRST116') {
+          // Usuario no existe en tabla usuarios
+          await supabase.auth.signOut();
+          throw new Error('Usuario no encontrado en el sistema');
+        }
+        throw error;
+      }
+
+      console.log('Perfil obtenido:', data);
+      return data;
+    } catch (error) {
+      console.error('Error en fetchUserProfile:', error);
+      throw error;
+    }
+  }, []);
+
+  // Función para manejar cambios de autenticación
+  const handleAuthStateChange = useCallback(async (currentUser) => {
+    try {
+      console.log('Procesando cambio de usuario:', currentUser?.id);
+      
+      setUser(currentUser);
+      setError(null);
+
+      if (currentUser) {
+        // Usuario autenticado - obtener perfil
+        const profile = await fetchUserProfile(currentUser.id);
+        setUserProfile(profile);
       } else {
-        setUserProfile(data);
+        // Usuario no autenticado - limpiar estado
+        setUserProfile(null);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error manejando auth state:', error);
+      setError(error.message);
+      setUserProfile(null);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [fetchUserProfile]);
 
-  const handleNavigation = (page) => {
+  // Efecto principal para manejar autenticación
+  useEffect(() => {
+    console.log('Inicializando sistema de autenticación');
+    
+    let mounted = true;
+    let authListener = null;
+
+    const initAuth = async () => {
+      try {
+        // 1. Obtener sesión actual
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          throw new Error(`Error obteniendo sesión: ${error.message}`);
+        }
+
+        // 2. Procesar sesión inicial si el componente sigue montado
+        if (mounted) {
+          await handleAuthStateChange(session?.user || null);
+        }
+
+        // 3. Configurar listener para cambios futuros
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log(`Auth event: ${event}`, session?.user?.id);
+            
+            // Solo procesar eventos reales de cambio, no la sesión inicial
+            if (event !== 'INITIAL_SESSION' && mounted) {
+              await handleAuthStateChange(session?.user || null);
+            }
+          }
+        );
+
+        authListener = subscription;
+
+      } catch (error) {
+        console.error('Error en inicialización:', error);
+        if (mounted) {
+          setError(error.message);
+          setLoading(false);
+        }
+      }
+    };
+
+    initAuth();
+
+    // Cleanup
+    return () => {
+      mounted = false;
+      if (authListener) {
+        authListener.unsubscribe();
+      }
+    };
+  }, [handleAuthStateChange]);
+
+  // Navegación entre páginas
+  const handleNavigation = useCallback((page) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const getPageName = () => {
-    switch(currentPage) {
-      case 'dashboard': return 'Dashboard';
-      case 'registrar-usuario': return 'Gestión de Usuarios';
-      case 'retiro-placas': return 'Retiro de Placas';
-      case 'retiro-lentes': return 'Retiro de Lentes';
-      case 'inventario-placas': return 'Inventario de Placas';
-      case 'crear-placa': return 'Crear Nueva Placa';
-      case 'editar-placa': return 'Editar Placa';
-      case 'eliminar-placa': return 'Eliminar Placa';
-      case 'ver-inventario': return 'Ver Inventario';
-      case 'inventario-lentes': return 'Inventario de Lentes';
-      case 'edicion-bd': return 'Edición de Base de Datos';
-      default: return 'Dashboard';
-    }
-  };
+  // Obtener nombre de página actual
+  const getPageName = useCallback(() => {
+    const pageNames = {
+      'dashboard': 'Dashboard',
+      'registrar-usuario': 'Gestión de Usuarios',
+      'retiro-placas': 'Retiro de Placas',
+      'retiro-lentes': 'Retiro de Lentes',
+      'inventario-placas': 'Inventario de Placas',
+      'crear-placa': 'Crear Nueva Placa',
+      'editar-placa': 'Editar Placa',
+      'eliminar-placa': 'Eliminar Placa',
+      'ver-inventario': 'Ver Inventario',
+      'inventario-lentes': 'Inventario de Lentes',
+      'edicion-bd': 'Edición de Base de Datos'
+    };
+    return pageNames[currentPage] || 'Dashboard';
+  }, [currentPage]);
 
-  // Función para verificar permisos
-  const hasPermission = (page) => {
+  // Verificar permisos de usuario
+  const hasPermission = useCallback((page) => {
     if (!userProfile) return false;
 
     const { rol, comite } = userProfile;
+    
+    const permissions = {
+      'dashboard': () => true,
+      'retiro-placas': () => true,
+      'retiro-lentes': () => true,
+      'inventario-placas': () => rol === 'administrador' || (rol === 'instructor' && comite === 'microscopia'),
+      'crear-placa': () => rol === 'administrador' || (rol === 'instructor' && comite === 'microscopia'),
+      'editar-placa': () => rol === 'administrador' || (rol === 'instructor' && comite === 'microscopia'),
+      'eliminar-placa': () => rol === 'administrador' || (rol === 'instructor' && comite === 'microscopia'),
+      'ver-inventario': () => rol === 'administrador' || (rol === 'instructor' && comite === 'microscopia'),
+      'inventario-lentes': () => rol === 'administrador' || (rol === 'instructor' && comite === 'microscopia'),
+      'registrar-usuario': () => rol === 'administrador',
+      'edicion-bd': () => rol === 'administrador'
+    };
 
-    switch(page) {
-      case 'dashboard':
-        return true; // Todos pueden ver el dashboard
-      
-      case 'retiro-placas':
-      case 'retiro-lentes':
-        return true; // Todos los usuarios pueden ver retiros
-      
-      case 'inventario-placas':
-      case 'crear-placa':
-      case 'editar-placa':
-      case 'eliminar-placa':
-      case 'ver-inventario':
-      case 'inventario-lentes':
-        return rol === 'administrador' || (rol === 'instructor' && comite === 'microscopia');
-      
-      case 'registrar-usuario':
-      case 'edicion-bd':
-        return rol === 'administrador'; // Solo administradores
-      
-      default:
-        return false;
+    return permissions[page] ? permissions[page]() : false;
+  }, [userProfile]);
+
+  // Obtener tipo de acceso requerido
+  const getRequiredAccess = useCallback((page) => {
+    const accessTypes = {
+      'retiro-placas': 'retiros',
+      'retiro-lentes': 'retiros',
+      'inventario-placas': 'inventario',
+      'crear-placa': 'inventario',
+      'editar-placa': 'inventario',
+      'eliminar-placa': 'inventario',
+      'ver-inventario': 'inventario',
+      'inventario-lentes': 'inventario',
+      'registrar-usuario': 'administracion',
+      'edicion-bd': 'administracion'
+    };
+    return accessTypes[page] || 'unknown';
+  }, []);
+
+  // Renderizar página actual
+  const renderCurrentPage = useCallback(() => {
+    // Error state
+    if (error) {
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '60vh',
+          textAlign: 'center',
+          padding: '40px'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px', color: '#dc3545' }}>⚠️</div>
+          <h2 style={{ color: '#dc3545', marginBottom: '15px' }}>Error de Aplicación</h2>
+          <p style={{ marginBottom: '20px' }}>{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            Recargar Página
+          </button>
+        </div>
+      );
     }
-  };
 
-  // Función para obtener el tipo de acceso requerido (para mostrar en AccessDenied)
-  const getRequiredAccess = (page) => {
-    switch(page) {
-      case 'retiro-placas':
-      case 'retiro-lentes':
-        return 'retiros';
-      
-      case 'inventario-placas':
-      case 'crear-placa':
-      case 'editar-placa':
-      case 'eliminar-placa':
-      case 'ver-inventario':
-      case 'inventario-lentes':
-        return 'inventario';
-      
-      case 'registrar-usuario':
-      case 'edicion-bd':
-        return 'administracion';
-      
-      default:
-        return 'unknown';
-    }
-  };
-
-  const renderCurrentPage = () => {
-    // Si no tenemos el perfil del usuario aún, mostrar loading
+    // Loading state
     if (!userProfile) {
-      return <div>Cargando perfil de usuario...</div>;
+      return (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '60vh',
+          fontSize: '18px'
+        }}>
+          Cargando perfil de usuario...
+        </div>
+      );
     }
 
-    // Verificar permisos para la página actual
+    // Access denied
     if (!hasPermission(currentPage)) {
       return (
         <AccessDenied 
@@ -162,45 +251,43 @@ function App() {
       );
     }
 
-    // Renderizar la página correspondiente
-    switch(currentPage) {
-      case 'dashboard': 
-        return <Dashboard userProfile={userProfile} />;
-      case 'registrar-usuario': 
-        return <UserManagement />;
-      case 'inventario-placas':
-        return <PlateInventory onNavigate={handleNavigation} />;
-      case 'crear-placa':
-        return <CreatePlate onNavigate={handleNavigation} />;
-      case 'editar-placa':
-        return <EditPlate onNavigate={handleNavigation} />;
-      case 'eliminar-placa':
-        return <DeletePlate onNavigate={handleNavigation} />;
-      case 'ver-inventario':
-        return <ViewInventory onNavigate={handleNavigation} />;
-      case 'retiro-placas':
-        return <PlateWithdrawal onNavigate={handleNavigation} />;
-      default: 
-        return (
-          <div>
-            <h2>{getPageName()}</h2>
-            <p>Página en desarrollo</p>
-            <div style={{
-              backgroundColor: '#f8f9fa',
-              padding: '15px',
-              borderRadius: '5px',
-              marginTop: '20px'
-            }}>
-              <p><strong>Tu perfil:</strong></p>
-              <p>Rol: {userProfile.rol}</p>
-              <p>Comité: {userProfile.comite}</p>
-              <p>Tienes acceso a esta sección ✅</p>
-            </div>
-          </div>
-        );
-    }
-  };
+    // Page routing
+    const pages = {
+      'dashboard': () => <Dashboard userProfile={userProfile} />,
+      'registrar-usuario': () => <UserManagement />,
+      'inventario-placas': () => <PlateInventory onNavigate={handleNavigation} />,
+      'crear-placa': () => <CreatePlate onNavigate={handleNavigation} />,
+      'editar-placa': () => <EditPlate onNavigate={handleNavigation} />,
+      'eliminar-placa': () => <DeletePlate onNavigate={handleNavigation} />,
+      'ver-inventario': () => <ViewInventory onNavigate={handleNavigation} />,
+      'retiro-placas': () => <PlateWithdrawal onNavigate={handleNavigation} />
+    };
 
+    if (pages[currentPage]) {
+      return pages[currentPage]();
+    }
+
+    // Default page
+    return (
+      <div>
+        <h2>{getPageName()}</h2>
+        <p>Página en desarrollo</p>
+        <div style={{
+          backgroundColor: '#f8f9fa',
+          padding: '15px',
+          borderRadius: '5px',
+          marginTop: '20px'
+        }}>
+          <p><strong>Tu perfil:</strong></p>
+          <p>Rol: {userProfile.rol}</p>
+          <p>Comité: {userProfile.comite}</p>
+          <p>Tienes acceso a esta sección ✅</p>
+        </div>
+      </div>
+    );
+  }, [error, userProfile, currentPage, hasPermission, getRequiredAccess, handleNavigation, getPageName]);
+
+  // Loading inicial
   if (loading) {
     return (
       <div style={{
@@ -208,13 +295,16 @@ function App() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
-        fontSize: '18px'
+        fontSize: '18px',
+        flexDirection: 'column'
       }}>
-        Verificando sesión...
+        <div style={{ marginBottom: '15px', fontSize: '32px' }}>⚡</div>
+        <div>Iniciando aplicación...</div>
       </div>
     );
   }
 
+  // Renderizado principal
   return (
     <div>
       {user ? (
