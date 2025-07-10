@@ -1,137 +1,75 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import BarcodeCamera from './BarcodeCamera'; // Ruta correcta
+import BarcodeCamera from './BarcodeCamera';
 
 const PlateWithdrawal = ({ onNavigate }) => {
-  const [scanning, setScanning] = useState(false);
-  const [scannedData, setScannedData] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannedCode, setScannedCode] = useState(null);
   const [plateData, setPlateData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleBarcodeDetected = async (barcodeText) => {
+  // Manejar código escaneado
+  const handleCodeScanned = async (code) => {
     try {
       setLoading(true);
-      setScannedData(barcodeText);
       setError('');
-      setScanning(false); // Detener la cámara
-
-      console.log('Buscando placa con código:', barcodeText);
-
-      // Timeout para evitar cuelgues
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout - La consulta tardó más de 15 segundos')), 15000);
-      });
-
-      const platePromise = supabase
+      setScannedCode(code);
+      setIsScanning(false); // Detener la cámara
+      
+      console.log('Buscando placa con código:', code);
+      
+      // Buscar la placa en la base de datos
+      const { data: plate, error: plateError } = await supabase
         .from('placas')
-        .select('*')
-        .eq('codigo_barra_txt', barcodeText)
+        .select(`
+          *,
+          temas(nombre, caja),
+          subtemas(nombre),
+          tinciones(nombre, tipo)
+        `)
+        .eq('codigo_barra_txt', code)
         .single();
-
-      const { data: plateData, error: plateError } = await Promise.race([platePromise, timeoutPromise]);
-
-      console.log('Resultado de consulta:', { plateData, plateError });
-
+      
       if (plateError) {
-        console.error('Error buscando placa:', plateError);
         if (plateError.code === 'PGRST116') {
-          setError(`No se encontró ninguna placa con el código: ${barcodeText}`);
+          setError(`No se encontró ninguna placa con el código: ${code}`);
         } else {
-          setError(`Error buscando placa: ${plateError.message} (Código: ${plateError.code})`);
+          setError(`Error buscando placa: ${plateError.message}`);
         }
         setPlateData(null);
         return;
       }
-
-      if (!plateData) {
-        setError(`No se encontraron datos para el código: ${barcodeText}`);
-        setPlateData(null);
-        return;
-      }
-
-      console.log('Placa encontrada:', plateData);
-
-      // Buscar datos relacionados con timeout individual
-      try {
-        const [temaResult, subtemaResult, tincionResult] = await Promise.race([
-          Promise.all([
-            supabase.from('temas').select('nombre, caja').eq('id_tema', plateData.id_tema).single(),
-            supabase.from('subtemas').select('nombre').eq('id_tema', plateData.id_tema).eq('id_subtema', plateData.id_subtema).single(),
-            supabase.from('tinciones').select('nombre, tipo').eq('id_tincion', plateData.id_tincion).single()
-          ]),
-          timeoutPromise
-        ]);
-
-        console.log('Datos relacionados obtenidos:', {
-          tema: temaResult,
-          subtema: subtemaResult,
-          tincion: tincionResult
-        });
-
-        const completeData = {
-          ...plateData,
-          tema: temaResult.data || { nombre: 'No encontrado', caja: 'N/A' },
-          subtema: subtemaResult.data || { nombre: 'No encontrado' },
-          tincion: tincionResult.data || { nombre: 'No encontrado', tipo: 'N/A' }
-        };
-
-        setPlateData(completeData);
-
-      } catch (relatedError) {
-        console.warn('Error en datos relacionados:', relatedError);
-        
-        // Mostrar placa con datos básicos
-        const basicData = {
-          ...plateData,
-          tema: { nombre: 'Error cargando', caja: 'N/A' },
-          subtema: { nombre: 'Error cargando' },
-          tincion: { nombre: 'Error cargando', tipo: 'N/A' }
-        };
-        
-        setPlateData(basicData);
-        setError('Se encontró la placa pero hubo errores cargando algunos datos relacionados');
-      }
-
+      
+      console.log('Placa encontrada:', plate);
+      setPlateData(plate);
+      
     } catch (error) {
       console.error('Error procesando código:', error);
-      
-      if (error.message.includes('Timeout')) {
-        setError('La consulta está tardando demasiado. Verifica tu conexión a internet.');
-      } else {
-        setError(`Error procesando código: ${error.message}`);
-      }
-      
+      setError(`Error: ${error.message}`);
       setPlateData(null);
     } finally {
       setLoading(false);
     }
   };
 
+  // Manejar errores de la cámara
   const handleCameraError = (errorMessage) => {
     setError(errorMessage);
-    setScanning(false);
+    setIsScanning(false);
   };
 
-  const startScanning = () => {
-    setError('');
-    setScannedData(null);
-    setPlateData(null);
-    setScanning(true);
-  };
-
-  const stopScanning = () => {
-    setScanning(false);
-  };
-
-  const resetScanner = () => {
-    setScannedData(null);
+  // Reiniciar escaneo
+  const startNewScan = () => {
+    setScannedCode(null);
     setPlateData(null);
     setError('');
+    setIsScanning(true);
   };
 
+  // Formatear fecha
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'No disponible';
     return new Date(dateString).toLocaleDateString('es-ES', {
       year: 'numeric',
       month: '2-digit',
@@ -142,223 +80,347 @@ const PlateWithdrawal = ({ onNavigate }) => {
   };
 
   return (
-    <div>
-      <button onClick={() => onNavigate('inventario-placas')}>← Volver al Inventario</button>
-      
-      <h2>Retiro de Placas</h2>
-      <p>Escanea el código de barras de la placa para ver su información</p>
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '30px' }}>
+        <button 
+          onClick={() => onNavigate('dashboard')}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            marginBottom: '20px'
+          }}
+        >
+          ← Volver al Dashboard
+        </button>
+        
+        <h2>Escaneo de Placas</h2>
+        <p style={{ color: '#666' }}>
+          Escanea el código de barras de una placa para ver su información
+        </p>
+      </div>
 
+      {/* Errores */}
       {error && (
-        <div style={{ 
-          backgroundColor: '#f8d7da', 
+        <div style={{
+          backgroundColor: '#f8d7da',
           color: '#721c24',
           padding: '15px',
-          borderRadius: '5px',
-          marginBottom: '20px'
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '1px solid #f5c6cb'
         }}>
-          {error}
+          <strong>⚠️ Error:</strong> {error}
         </div>
       )}
 
-      {/* Controles principales */}
-      <div style={{ marginBottom: '20px' }}>
-        {!scanning && !scannedData && (
-          <button 
-            onClick={startScanning}
+      {/* Controles */}
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        {!isScanning && !scannedCode && (
+          <button
+            onClick={() => setIsScanning(true)}
             style={{
               padding: '15px 30px',
               fontSize: '18px',
               backgroundColor: '#28a745',
               color: 'white',
               border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
+              borderRadius: '10px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
             }}
           >
-            📷 Iniciar Escáner
+            📱 Iniciar Escáner
           </button>
         )}
 
-        {scanning && (
-          <button 
-            onClick={stopScanning}
+        {isScanning && (
+          <button
+            onClick={() => setIsScanning(false)}
             style={{
               padding: '10px 20px',
               fontSize: '16px',
               backgroundColor: '#dc3545',
               color: 'white',
               border: 'none',
-              borderRadius: '5px',
+              borderRadius: '8px',
               cursor: 'pointer',
-              marginBottom: '15px'
+              marginBottom: '20px'
             }}
           >
             ⏹️ Detener Escáner
           </button>
         )}
 
-        {scannedData && (
-          <button 
-            onClick={resetScanner}
+        {scannedCode && (
+          <button
+            onClick={startNewScan}
             style={{
-              padding: '10px 20px',
+              padding: '12px 24px',
               fontSize: '16px',
               backgroundColor: '#007bff',
               color: 'white',
               border: 'none',
-              borderRadius: '5px',
+              borderRadius: '8px',
               cursor: 'pointer'
             }}
           >
-            📱 Escanear Otra Placa
+            🔄 Escanear Otra Placa
           </button>
         )}
       </div>
 
-      {/* Cámara profesional */}
-      {scanning && (
-        <div style={{
-          border: '2px solid #28a745',
-          borderRadius: '10px',
-          padding: '15px',
-          marginBottom: '20px',
-          backgroundColor: '#f8f9fa'
-        }}>
+      {/* Cámara */}
+      {isScanning && (
+        <div style={{ marginBottom: '30px' }}>
           <BarcodeCamera
-            isActive={scanning}
-            onCodeDetected={handleBarcodeDetected}
+            isActive={isScanning}
+            onCodeDetected={handleCodeScanned}
             onError={handleCameraError}
-            style={{
-              maxWidth: '600px',
-              margin: '0 auto'
-            }}
           />
-          
-          <div style={{
-            marginTop: '15px',
-            padding: '10px',
-            backgroundColor: '#e9ecef',
-            borderRadius: '5px',
-            fontSize: '14px',
-            textAlign: 'center'
-          }}>
-            <strong>💡 Tips para mejor detección:</strong>
-            <ul style={{ 
-              margin: '8px 0 0 0', 
-              paddingLeft: '0', 
-              listStyle: 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px'
-            }}>
-              <li>• Mantén el código centrado en el área verde</li>
-              <li>• Asegúrate de tener buena iluminación</li>
-              <li>• Mantén distancia de 10-20cm del código</li>
-              <li>• Toca la pantalla para enfocar manualmente</li>
-            </ul>
-          </div>
         </div>
       )}
 
       {/* Código escaneado */}
-      {scannedData && (
+      {scannedCode && (
         <div style={{
           backgroundColor: '#d4edda',
           color: '#155724',
           padding: '15px',
-          borderRadius: '5px',
-          marginBottom: '20px'
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '1px solid #c3e6cb',
+          textAlign: 'center'
         }}>
-          <h4>✅ Código Escaneado: {scannedData}</h4>
+          <h4 style={{ margin: '0 0 5px 0' }}>✅ Código Escaneado</h4>
+          <code style={{ fontSize: '18px', fontWeight: 'bold' }}>{scannedCode}</code>
         </div>
       )}
 
       {/* Loading */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          <div style={{ fontSize: '32px', marginBottom: '10px' }}>⏳</div>
-          <p>Buscando información de la placa...</p>
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ fontSize: '32px', marginBottom: '15px' }}>⏳</div>
+          <p style={{ fontSize: '16px', color: '#666' }}>
+            Buscando información de la placa...
+          </p>
         </div>
       )}
 
       {/* Datos de la placa */}
       {plateData && (
         <div style={{
-          border: '1px solid #ddd',
-          borderRadius: '8px',
-          padding: '20px',
-          backgroundColor: '#f8f9fa'
+          backgroundColor: '#f8f9fa',
+          border: '1px solid #dee2e6',
+          borderRadius: '10px',
+          padding: '25px',
+          marginBottom: '20px'
         }}>
-          <h3>✅ Información de la Placa</h3>
+          <h3 style={{ 
+            color: '#28a745', 
+            marginBottom: '20px',
+            fontSize: '24px',
+            borderBottom: '2px solid #28a745',
+            paddingBottom: '10px'
+          }}>
+            📋 Información de la Placa
+          </h3>
           
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '20px',
-            marginTop: '15px'
+            gap: '25px'
           }}>
-            <div>
-              <h4>Identificación</h4>
-              <p><strong>ID:</strong> {plateData.id}</p>
-              <p><strong>ID Visual:</strong> {plateData.id_visual}</p>
-              <p><strong>Tema:</strong> {plateData.id_tema} - {plateData.tema?.nombre}</p>
-              <p><strong>Subtema:</strong> {plateData.id_subtema} - {plateData.subtema?.nombre}</p>
-              <p><strong>Caja:</strong> {plateData.caja}</p>
+            {/* Información básica */}
+            <div style={{
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '8px',
+              border: '1px solid #dee2e6'
+            }}>
+              <h4 style={{ 
+                color: '#495057', 
+                marginBottom: '15px',
+                fontSize: '18px',
+                borderBottom: '1px solid #dee2e6',
+                paddingBottom: '8px'
+              }}>
+                🔍 Identificación
+              </h4>
+              <div style={{ lineHeight: '1.8' }}>
+                <p><strong>ID de Placa:</strong> {plateData.id}</p>
+                <p><strong>ID Visual:</strong> {plateData.id_visual}</p>
+                <p><strong>Tema:</strong> {plateData.id_tema} - {plateData.temas?.nombre || 'N/A'}</p>
+                <p><strong>Subtema:</strong> {plateData.id_subtema} - {plateData.subtemas?.nombre || 'N/A'}</p>
+                <p><strong>Caja:</strong> {plateData.caja || 'N/A'}</p>
+              </div>
             </div>
 
-            <div>
-              <h4>Detalles</h4>
-              <p><strong>Tinción:</strong> {plateData.tincion?.nombre} ({plateData.tincion?.tipo})</p>
-              <p><strong>Estado:</strong> {plateData.estado_placa}</p>
-              <p><strong>Último Uso:</strong> {formatDate(plateData.ultimo_uso)}</p>
-              <p><strong>Creación:</strong> {formatDate(plateData.creacion)}</p>
+            {/* Detalles técnicos */}
+            <div style={{
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '8px',
+              border: '1px solid #dee2e6'
+            }}>
+              <h4 style={{ 
+                color: '#495057', 
+                marginBottom: '15px',
+                fontSize: '18px',
+                borderBottom: '1px solid #dee2e6',
+                paddingBottom: '8px'
+              }}>
+                🧪 Detalles Técnicos
+              </h4>
+              <div style={{ lineHeight: '1.8' }}>
+                <p><strong>Tinción:</strong> {plateData.tinciones?.nombre || 'N/A'}</p>
+                <p><strong>Tipo de Tinción:</strong> {plateData.tinciones?.tipo || 'N/A'}</p>
+                <p><strong>Estado:</strong> 
+                  <span style={{
+                    backgroundColor: 
+                      plateData.estado_placa === 'excelente' ? '#28a745' :
+                      plateData.estado_placa === 'muy buena' ? '#20c997' :
+                      plateData.estado_placa === 'buena' ? '#ffc107' : '#dc3545',
+                    color: 'white',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    marginLeft: '8px'
+                  }}>
+                    {plateData.estado_placa || 'N/A'}
+                  </span>
+                </p>
+                <p><strong>Actividad:</strong> {plateData.actividad || 'N/A'}</p>
+              </div>
+            </div>
+
+            {/* Fechas */}
+            <div style={{
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '8px',
+              border: '1px solid #dee2e6'
+            }}>
+              <h4 style={{ 
+                color: '#495057', 
+                marginBottom: '15px',
+                fontSize: '18px',
+                borderBottom: '1px solid #dee2e6',
+                paddingBottom: '8px'
+              }}>
+                📅 Historial
+              </h4>
+              <div style={{ lineHeight: '1.8' }}>
+                <p><strong>Creación:</strong> {formatDate(plateData.creacion)}</p>
+                <p><strong>Última Edición:</strong> {formatDate(plateData.edicion)}</p>
+                <p><strong>Último Uso:</strong> {formatDate(plateData.ultimo_uso)}</p>
+              </div>
             </div>
           </div>
 
+          {/* Observaciones */}
           {plateData.observaciones && (
-            <div style={{ marginTop: '15px' }}>
-              <h4>Observaciones</h4>
-              <p>{plateData.observaciones}</p>
+            <div style={{
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '8px',
+              border: '1px solid #dee2e6',
+              marginTop: '20px'
+            }}>
+              <h4 style={{ 
+                color: '#495057', 
+                marginBottom: '15px',
+                fontSize: '18px',
+                borderBottom: '1px solid #dee2e6',
+                paddingBottom: '8px'
+              }}>
+                📝 Observaciones
+              </h4>
+              <p style={{ 
+                lineHeight: '1.6', 
+                color: '#495057',
+                backgroundColor: '#f8f9fa',
+                padding: '12px',
+                borderRadius: '5px',
+                border: '1px solid #e9ecef'
+              }}>
+                {plateData.observaciones}
+              </p>
             </div>
           )}
 
-          {/* Mostrar imágenes si existen */}
-          {(plateData.imagen_macro_url || plateData.imagen_micro_url || plateData.codigo_barra_url) && (
-            <div style={{ marginTop: '20px' }}>
-              <h4>Imágenes</h4>
-              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+          {/* Imágenes */}
+          {(plateData.imagen_macro_url || (plateData.imagen_micro_url && plateData.imagen_micro_url.length > 0) || plateData.codigo_barra_url) && (
+            <div style={{
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '8px',
+              border: '1px solid #dee2e6',
+              marginTop: '20px'
+            }}>
+              <h4 style={{ 
+                color: '#495057', 
+                marginBottom: '15px',
+                fontSize: '18px',
+                borderBottom: '1px solid #dee2e6',
+                paddingBottom: '8px'
+              }}>
+                🖼️ Imágenes
+              </h4>
+              
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '15px' 
+              }}>
                 {plateData.imagen_macro_url && (
                   <div>
-                    <h5>Imagen Macro</h5>
+                    <h5 style={{ marginBottom: '8px', color: '#6c757d' }}>Imagen Macro</h5>
                     <img 
                       src={plateData.imagen_macro_url} 
                       alt="Imagen macro" 
                       style={{ 
                         maxWidth: '200px', 
                         maxHeight: '200px',
-                        border: '1px solid #ddd',
-                        borderRadius: '5px'
-                      }} 
+                        border: '2px solid #dee2e6',
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => window.open(plateData.imagen_macro_url, '_blank')}
                     />
                   </div>
                 )}
                 
                 {plateData.imagen_micro_url && plateData.imagen_micro_url.length > 0 && (
                   <div>
-                    <h5>Imágenes Microscópicas ({plateData.imagen_micro_url.length})</h5>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <h5 style={{ marginBottom: '8px', color: '#6c757d' }}>
+                      Imágenes Micro ({plateData.imagen_micro_url.length})
+                    </h5>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       {plateData.imagen_micro_url.map((url, index) => (
                         <img 
                           key={index}
                           src={url} 
-                          alt={`Imagen micro ${index + 1}`} 
+                          alt={`Micro ${index + 1}`} 
                           style={{ 
-                            width: '100px', 
-                            height: '100px',
+                            width: '80px', 
+                            height: '80px',
                             objectFit: 'cover',
-                            border: '1px solid #ddd',
-                            borderRadius: '5px'
-                          }} 
+                            border: '2px solid #dee2e6',
+                            borderRadius: '6px',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => window.open(url, '_blank')}
                         />
                       ))}
                     </div>
@@ -367,15 +429,17 @@ const PlateWithdrawal = ({ onNavigate }) => {
 
                 {plateData.codigo_barra_url && (
                   <div>
-                    <h5>Código de Barras</h5>
+                    <h5 style={{ marginBottom: '8px', color: '#6c757d' }}>Código de Barras</h5>
                     <img 
                       src={plateData.codigo_barra_url} 
                       alt="Código de barras" 
                       style={{ 
                         maxWidth: '200px',
-                        border: '1px solid #ddd',
-                        borderRadius: '5px'
-                      }} 
+                        border: '2px solid #dee2e6',
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => window.open(plateData.codigo_barra_url, '_blank')}
                     />
                   </div>
                 )}
