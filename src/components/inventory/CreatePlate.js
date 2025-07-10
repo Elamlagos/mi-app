@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { SimpleBarcodeGenerator } from '../../utils/simpleBarcodeGenerator';
 
 const CreatePlate = ({ onNavigate }) => {
   // Estados para datos de BD
@@ -332,75 +333,27 @@ const CreatePlate = ({ onNavigate }) => {
     return data.downloadUrl;
   };
 
-  // FUNCIÓN CORREGIDA: Generar código de barras
-  const generateBarcodeImage = (plateId, idVisual) => {
-    return new Promise((resolve, reject) => {
-      try {
-        // Verificar que JsBarcode esté disponible
-        if (!window.JsBarcode) {
-          reject(new Error('JsBarcode no está disponible. Verifica que esté cargado en index.html'));
-          return;
-        }
-        
-        console.log('📊 Generando código de barras para ID:', plateId, 'Visual:', idVisual);
-        
-        // Crear canvas temporal para el código de barras
-        const tempCanvas = document.createElement('canvas');
-        
-        // Generar código de barras CODE128 
-        window.JsBarcode(tempCanvas, plateId.toString(), {
-          format: "CODE128",
-          width: 2,
-          height: 80,
-          displayValue: false,
-          background: "#ffffff",
-          lineColor: "#000000",
-          margin: 5
-        });
-
-        // Crear canvas final más grande
-        const finalCanvas = document.createElement('canvas');
-        const ctx = finalCanvas.getContext('2d');
-        
-        // Configurar dimensiones
-        const padding = 20;
-        const textHeight = 30;
-        finalCanvas.width = Math.max(tempCanvas.width + (padding * 2), 300);
-        finalCanvas.height = tempCanvas.height + textHeight + (padding * 2) + 20;
-        
-        // Fondo blanco
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-        
-        // Texto ID visual arriba
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(idVisual, finalCanvas.width / 2, padding + 18);
-        
-        // Dibujar código de barras centrado
-        const x = (finalCanvas.width - tempCanvas.width) / 2;
-        const y = padding + textHeight;
-        ctx.drawImage(tempCanvas, x, y);
-        
-        // Número del código abajo
-        ctx.font = '14px Arial';
-        ctx.fillText(plateId.toString(), finalCanvas.width / 2, finalCanvas.height - 10);
-        
-        // Convertir a base64
-        const base64Data = finalCanvas.toDataURL('image/png').split(',')[1];
-        
-        console.log('✅ Código de barras generado exitosamente');
-        resolve(base64Data);
-        
-      } catch (error) {
-        console.error('❌ Error generando código de barras:', error);
-        reject(new Error(`Error generando código de barras: ${error.message}`));
-      }
-    });
+  // 🚀 NUEVA FUNCIÓN SIMPLE PARA GENERAR CÓDIGOS
+  const generateBarcodeImage = async (plateId, idVisual) => {
+    try {
+      console.log('🚀 Generando código con sistema simple...');
+      
+      // Esperar que el sistema esté listo
+      await SimpleBarcodeGenerator.waitForSystem();
+      
+      // Generar código usando el sistema simple
+      const base64Data = await SimpleBarcodeGenerator.generateBarcode(plateId, idVisual);
+      
+      console.log('✅ Código generado exitosamente');
+      return base64Data;
+      
+    } catch (error) {
+      console.error('❌ Error generando código:', error);
+      throw new Error(`Error generando código de barras: ${error.message}`);
+    }
   };
 
-  // FUNCIÓN CORREGIDA: Subir código de barras a GitHub
+  // 🚀 FUNCIÓN SIMPLIFICADA PARA SUBIR CÓDIGOS
   const uploadBarcodeToGitHub = async (plateId, idTema, idSubtema, base64Data) => {
     try {
       console.log('📤 Subiendo código de barras a GitHub...');
@@ -436,7 +389,7 @@ const CreatePlate = ({ onNavigate }) => {
     }
   };
 
-  // FUNCIÓN CORREGIDA: Submit principal
+  // 🚀 FUNCIÓN PRINCIPAL SIMPLIFICADA
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isReserved || !plateId) {
@@ -455,8 +408,7 @@ const CreatePlate = ({ onNavigate }) => {
 
       console.log('💾 Iniciando proceso de guardado...');
 
-      // VALIDACIÓN FINAL: Verificar que el ID visual sigue disponible
-      console.log('🔍 Verificando disponibilidad final del ID visual:', idVisual);
+      // VALIDACIÓN FINAL
       const { data: existingPlates, error: validationError } = await supabase
         .from('placas')
         .select('id, id_visual')
@@ -473,59 +425,48 @@ const CreatePlate = ({ onNavigate }) => {
         return;
       }
 
-      console.log('✅ ID visual disponible, continuando...');
-
       let imagenMacroUrl = null;
       let imagenesMicroUrls = [];
       let codigoBarraUrl = null;
 
-      // GENERAR Y SUBIR CÓDIGO DE BARRAS - CON MEJOR MANEJO DE ERRORES
+      // GENERAR CÓDIGO DE BARRAS
       try {
-        console.log('📊 Iniciando generación de código de barras...');
-        const barcodeBase64 = await generateBarcodeImage(plateId, idVisual);
+        if (!SimpleBarcodeGenerator.isSystemReady()) {
+          await SimpleBarcodeGenerator.waitForSystem();
+        }
         
-        console.log('📤 Subiendo código de barras...');
+        const barcodeBase64 = await generateBarcodeImage(plateId, idVisual);
         codigoBarraUrl = await uploadBarcodeToGitHub(plateId, selectedTema, selectedSubtema, barcodeBase64);
         
         console.log('✅ Código de barras procesado exitosamente');
       } catch (barcodeError) {
         console.error('❌ Error procesando código de barras:', barcodeError);
-        
-        // NO fallar todo el proceso, solo mostrar advertencia
-        const warningMsg = `Advertencia: No se pudo generar el código de barras (${barcodeError.message}). La placa se guardará sin código de barras.`;
-        console.warn('⚠️', warningMsg);
-        
-        // Mostrar advertencia pero continuar
+        const warningMsg = `Advertencia: Código de barras no se pudo crear (${barcodeError.message}). La placa se guardará sin código de barras.`;
         setError(warningMsg);
       }
 
-      // Subir imagen macro si existe
+      // Subir imagen macro
       if (imagenMacro) {
         try {
-          console.log('📤 Subiendo imagen macro...');
           imagenMacroUrl = await uploadImage(imagenMacro, 'macro');
-          console.log('✅ Imagen macro subida');
         } catch (macroError) {
           console.warn('⚠️ Error subiendo imagen macro:', macroError);
         }
       }
 
-      // Subir imágenes micro si existen
+      // Subir imágenes micro
       if (imagenesMicro.length > 0) {
         try {
-          console.log(`📤 Subiendo ${imagenesMicro.length} imágenes microscópicas...`);
           for (const imagen of imagenesMicro) {
             const url = await uploadImage(imagen, 'micro');
             imagenesMicroUrls.push(url);
           }
-          console.log('✅ Imágenes microscópicas subidas');
         } catch (microError) {
           console.warn('⚠️ Error subiendo imágenes microscópicas:', microError);
         }
       }
 
       // GUARDAR EN BASE DE DATOS
-      console.log('💾 Guardando placa en base de datos...');
       const { error: dbError } = await supabase
         .from('placas')
         .update({
@@ -552,17 +493,14 @@ const CreatePlate = ({ onNavigate }) => {
         .eq('id', plateId);
 
       if (dbError) {
-        console.error('❌ Error guardando en base de datos:', dbError);
         throw dbError;
       }
 
-      console.log('✅ Placa guardada exitosamente');
-
-      // Mensaje de éxito apropiado
+      // MENSAJE DE ÉXITO
       if (codigoBarraUrl) {
         alert('✅ Placa creada exitosamente con código de barras');
       } else {
-        alert('✅ Placa creada exitosamente (sin código de barras - revisa la configuración)');
+        alert('✅ Placa creada exitosamente (sin código de barras - revisar configuración)');
       }
       
       onNavigate('inventario-placas');
@@ -773,7 +711,7 @@ const CreatePlate = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Resto del formulario solo visible después de reservar */}
+      {/* Resto del formulario */}
       {isReserved && (
         <>
           {/* Acordeón de Tinciones */}

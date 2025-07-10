@@ -12,26 +12,32 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Sistema de Inventario</title>
+    
+    <!-- LIBRERÍAS OPTIMIZADAS PARA CÓDIGOS DE BARRAS -->
+    <!-- JsBarcode: Generación de códigos confiable -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    
+    <!-- ZXing: Escaneo ultra rápido (usado por Google) -->
+    <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     
-    <!-- QuaggaJS para escaneo de códigos de barras -->
-    <script 
-      src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"
-      integrity="sha512-bCsBoYoW6zE0aja5xcIyoCDPfT27+cGr7AOCqelttLVRGay6EKGQbR6wm6SUcUGOMGXJpj+jrIpMS6i80+kZPw=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer">
-    </script>
-    
-    <!-- Verificar que QuaggaJS se cargó correctamente -->
+    <!-- VERIFICACIÓN DE LIBRERÍAS -->
     <script>
       window.addEventListener('load', function() {
-        if (window.Quagga) {
-          console.log('✅ QuaggaJS cargado correctamente');
+        console.log('🔄 Verificando librerías de códigos...');
+        
+        if (window.JsBarcode && window.ZXing) {
+          console.log('✅ JsBarcode cargado - Versión:', window.JsBarcode.VERSION || 'OK');
+          console.log('✅ ZXing cargado - Listo para escanear');
+          window.BARCODE_SYSTEM_READY = true;
         } else {
-          console.error('❌ QuaggaJS no se pudo cargar');
+          console.error('❌ Error: Librerías de códigos no disponibles');
+          console.error('JsBarcode:', !!window.JsBarcode);
+          console.error('ZXing:', !!window.ZXing);
+          window.BARCODE_SYSTEM_READY = false;
         }
       });
     </script>
