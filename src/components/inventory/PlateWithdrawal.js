@@ -1,328 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import BarcodeCamera from './BarcodeCamera'; // Ruta correcta
 
-const PlateWithdrawalEnhanced = ({ onNavigate }) => {
+const PlateWithdrawal = ({ onNavigate }) => {
   const [scanning, setScanning] = useState(false);
   const [scannedData, setScannedData] = useState(null);
   const [plateData, setPlateData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [autoFocusEnabled, setAutoFocusEnabled] = useState(true);
-  const [cameraCapabilities, setCameraCapabilities] = useState(null);
-  const [currentZoom, setCurrentZoom] = useState(1);
-  
-  const scannerRef = useRef(null);
-  const streamRef = useRef(null);
-  const quaggaRef = useRef(null);
-
-  useEffect(() => {
-    return () => {
-      if (scanning) {
-        stopScanner();
-      }
-    };
-  }, [scanning]);
-
-  // Función para obtener capacidades de la cámara
-  const getCameraCapabilities = async (stream) => {
-    try {
-      const videoTrack = stream.getVideoTracks()[0];
-      const capabilities = videoTrack.getCapabilities();
-      const settings = videoTrack.getSettings();
-      
-      console.log('Capacidades de cámara:', capabilities);
-      console.log('Configuración actual:', settings);
-      
-      setCameraCapabilities({
-        focusMode: capabilities.focusMode || [],
-        zoom: capabilities.zoom || null,
-        torch: capabilities.torch || false,
-        currentSettings: settings
-      });
-      
-      return { capabilities, settings, videoTrack };
-    } catch (error) {
-      console.warn('No se pudieron obtener capacidades de cámara:', error);
-      return null;
-    }
-  };
-
-  // Función para configurar autoenfoque
-  const setupAutoFocus = async (videoTrack) => {
-    try {
-      if (!videoTrack) return;
-      
-      const capabilities = videoTrack.getCapabilities();
-      
-      if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-        await videoTrack.applyConstraints({
-          advanced: [{
-            focusMode: 'continuous',
-            focusDistance: 0.1 // Enfoque para objetos cercanos (10cm)
-          }]
-        });
-        console.log('Autoenfoque continuo activado');
-      } else if (capabilities.focusMode && capabilities.focusMode.includes('single-shot')) {
-        await videoTrack.applyConstraints({
-          advanced: [{
-            focusMode: 'single-shot'
-          }]
-        });
-        console.log('Autoenfoque single-shot activado');
-      }
-    } catch (error) {
-      console.warn('No se pudo configurar autoenfoque:', error);
-    }
-  };
-
-  // Función para enfoque manual
-  const triggerManualFocus = async () => {
-    try {
-      if (!streamRef.current) return;
-      
-      const videoTrack = streamRef.current.getVideoTracks()[0];
-      const capabilities = videoTrack.getCapabilities();
-      
-      if (capabilities.focusMode && capabilities.focusMode.includes('single-shot')) {
-        await videoTrack.applyConstraints({
-          advanced: [{
-            focusMode: 'single-shot'
-          }]
-        });
-        console.log('Enfoque manual ejecutado');
-        
-        // Feedback visual
-        if (scannerRef.current) {
-          scannerRef.current.style.border = '3px solid #00ff00';
-          setTimeout(() => {
-            if (scannerRef.current) {
-              scannerRef.current.style.border = '2px solid #28a745';
-            }
-          }, 200);
-        }
-      }
-    } catch (error) {
-      console.warn('Error en enfoque manual:', error);
-    }
-  };
-
-  // Función para ajustar zoom
-  const adjustZoom = async (zoomLevel) => {
-    try {
-      if (!streamRef.current) return;
-      
-      const videoTrack = streamRef.current.getVideoTracks()[0];
-      const capabilities = videoTrack.getCapabilities();
-      
-      if (capabilities.zoom) {
-        const maxZoom = capabilities.zoom.max || 3;
-        const minZoom = capabilities.zoom.min || 1;
-        const clampedZoom = Math.max(minZoom, Math.min(maxZoom, zoomLevel));
-        
-        await videoTrack.applyConstraints({
-          advanced: [{
-            zoom: clampedZoom
-          }]
-        });
-        
-        setCurrentZoom(clampedZoom);
-        console.log('Zoom ajustado a:', clampedZoom);
-      }
-    } catch (error) {
-      console.warn('Error ajustando zoom:', error);
-    }
-  };
-
-  const startScanner = async () => {
-    try {
-      setError('');
-      
-      if (!window.Quagga) {
-        throw new Error('QuaggaJS no está cargado');
-      }
-
-      // Configuración avanzada de cámara
-      const constraints = {
-        video: { 
-          facingMode: "environment",
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
-          aspectRatio: { ideal: 16/9 },
-          // Configuraciones para mejor enfoque
-          focusMode: autoFocusEnabled ? "continuous" : "manual",
-          focusDistance: 0.1, // 10cm para códigos de barras
-          // Configuraciones para mejor calidad
-          frameRate: { ideal: 30, max: 60 },
-          exposureMode: "continuous",
-          whiteBalanceMode: "continuous"
-        } 
-      };
-
-      console.log('Solicitando permisos de cámara con configuración avanzada...');
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      
-      // Obtener capacidades y configurar autoenfoque
-      const cameraInfo = await getCameraCapabilities(stream);
-      if (cameraInfo && autoFocusEnabled) {
-        await setupAutoFocus(cameraInfo.videoTrack);
-      }
-
-      setScanning(true);
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      if (!scannerRef.current) {
-        throw new Error('Elemento del escáner no encontrado');
-      }
-
-      scannerRef.current.innerHTML = '';
-      
-      const Quagga = window.Quagga;
-      quaggaRef.current = Quagga;
-      
-      // Configuración optimizada de Quagga
-      Quagga.init({
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: scannerRef.current,
-          constraints: constraints.video,
-          area: { // Área de escaneo optimizada
-            top: "20%",
-            right: "15%",
-            left: "15%",
-            bottom: "20%"
-          },
-          singleChannel: false // Usar todos los canales de color
-        },
-        decoder: {
-          readers: [
-            "code_128_reader",
-            "ean_reader",
-            "ean_8_reader",
-            "code_39_reader",
-            "code_39_vin_reader",
-            "codabar_reader"
-          ],
-          multiple: false // Solo un código a la vez
-        },
-        locate: true,
-        locator: {
-          patchSize: "large", // Parches más grandes para mejor detección
-          halfSample: false,  // Usar resolución completa
-          showCanvas: false,
-          showPatches: false,
-          showFoundPatches: false,
-          showSkeleton: false,
-          showLabels: false,
-          showPatchLabels: false,
-          showRemainingPatchLabels: false,
-          boxFromPatches: {
-            showTransformed: false,
-            showTransformedBox: false,
-            showBB: false
-          }
-        },
-        numOfWorkers: navigator.hardwareConcurrency || 4,
-        frequency: 20, // Mayor frecuencia de escaneo
-        debug: {
-          showCanvas: false,
-          showPatches: false,
-          showFoundPatches: false,
-          showSkeleton: false,
-          showLabels: false,
-          showPatchLabels: false,
-          showRemainingPatchLabels: false,
-          boxFromPatches: {
-            showTransformed: false,
-            showTransformedBox: false,
-            showBB: false
-          }
-        }
-      }, (err) => {
-        if (err) {
-          console.error('Error iniciando Quagga:', err);
-          setError(`Error al inicializar el escáner: ${err.message}`);
-          setScanning(false);
-          return;
-        }
-        
-        console.log('Quagga iniciado correctamente');
-        Quagga.start();
-        
-        // Configurar autoenfoque periódico
-        if (autoFocusEnabled) {
-          setupPeriodicAutoFocus();
-        }
-      });
-
-      // Evento de detección con validación
-      let lastDetection = 0;
-      Quagga.onDetected((data) => {
-        const now = Date.now();
-        // Evitar detecciones múltiples muy rápidas
-        if (now - lastDetection < 1000) return;
-        lastDetection = now;
-        
-        const code = data.codeResult.code;
-        console.log('Código detectado:', code);
-        
-        // Validar que el código tenga formato esperado (6 dígitos)
-        if (/^\d{6}$/.test(code)) {
-          stopScanner();
-          handleBarcodeDetected(code);
-        } else {
-          console.log('Código no válido (no son 6 dígitos):', code);
-        }
-      });
-
-    } catch (error) {
-      console.error('Error configurando escáner:', error);
-      setError(`Error configurando el escáner: ${error.message}`);
-      setScanning(false);
-    }
-  };
-
-  // Autoenfoque periódico
-  const setupPeriodicAutoFocus = () => {
-    const focusInterval = setInterval(() => {
-      if (!scanning || !autoFocusEnabled) {
-        clearInterval(focusInterval);
-        return;
-      }
-      triggerManualFocus();
-    }, 3000); // Reenfoque cada 3 segundos
-  };
-
-  const stopScanner = () => {
-    try {
-      if (quaggaRef.current) {
-        quaggaRef.current.stop();
-        quaggaRef.current.offDetected();
-        quaggaRef.current = null;
-      }
-      
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-      
-      setScanning(false);
-      setCameraCapabilities(null);
-      setCurrentZoom(1);
-    } catch (error) {
-      console.error('Error deteniendo escáner:', error);
-    }
-  };
 
   const handleBarcodeDetected = async (barcodeText) => {
     try {
       setLoading(true);
       setScannedData(barcodeText);
       setError('');
+      setScanning(false); // Detener la cámara
 
       console.log('Buscando placa con código:', barcodeText);
 
+      // Timeout para evitar cuelgues
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout - La consulta tardó más de 15 segundos')), 15000);
       });
@@ -335,35 +31,97 @@ const PlateWithdrawalEnhanced = ({ onNavigate }) => {
 
       const { data: plateData, error: plateError } = await Promise.race([platePromise, timeoutPromise]);
 
+      console.log('Resultado de consulta:', { plateData, plateError });
+
       if (plateError) {
+        console.error('Error buscando placa:', plateError);
         if (plateError.code === 'PGRST116') {
           setError(`No se encontró ninguna placa con el código: ${barcodeText}`);
         } else {
-          setError(`Error buscando placa: ${plateError.message}`);
+          setError(`Error buscando placa: ${plateError.message} (Código: ${plateError.code})`);
         }
         setPlateData(null);
         return;
       }
 
-      console.log('Placa encontrada:', plateData);
-      
-      // Buscar datos relacionados (simplificado por ahora)
-      const completeData = {
-        ...plateData,
-        tema: { nombre: 'Cargando...', caja: 'N/A' },
-        subtema: { nombre: 'Cargando...' },
-        tincion: { nombre: 'Cargando...', tipo: 'N/A' }
-      };
+      if (!plateData) {
+        setError(`No se encontraron datos para el código: ${barcodeText}`);
+        setPlateData(null);
+        return;
+      }
 
-      setPlateData(completeData);
+      console.log('Placa encontrada:', plateData);
+
+      // Buscar datos relacionados con timeout individual
+      try {
+        const [temaResult, subtemaResult, tincionResult] = await Promise.race([
+          Promise.all([
+            supabase.from('temas').select('nombre, caja').eq('id_tema', plateData.id_tema).single(),
+            supabase.from('subtemas').select('nombre').eq('id_tema', plateData.id_tema).eq('id_subtema', plateData.id_subtema).single(),
+            supabase.from('tinciones').select('nombre, tipo').eq('id_tincion', plateData.id_tincion).single()
+          ]),
+          timeoutPromise
+        ]);
+
+        console.log('Datos relacionados obtenidos:', {
+          tema: temaResult,
+          subtema: subtemaResult,
+          tincion: tincionResult
+        });
+
+        const completeData = {
+          ...plateData,
+          tema: temaResult.data || { nombre: 'No encontrado', caja: 'N/A' },
+          subtema: subtemaResult.data || { nombre: 'No encontrado' },
+          tincion: tincionResult.data || { nombre: 'No encontrado', tipo: 'N/A' }
+        };
+
+        setPlateData(completeData);
+
+      } catch (relatedError) {
+        console.warn('Error en datos relacionados:', relatedError);
+        
+        // Mostrar placa con datos básicos
+        const basicData = {
+          ...plateData,
+          tema: { nombre: 'Error cargando', caja: 'N/A' },
+          subtema: { nombre: 'Error cargando' },
+          tincion: { nombre: 'Error cargando', tipo: 'N/A' }
+        };
+        
+        setPlateData(basicData);
+        setError('Se encontró la placa pero hubo errores cargando algunos datos relacionados');
+      }
 
     } catch (error) {
       console.error('Error procesando código:', error);
-      setError(`Error procesando código: ${error.message}`);
+      
+      if (error.message.includes('Timeout')) {
+        setError('La consulta está tardando demasiado. Verifica tu conexión a internet.');
+      } else {
+        setError(`Error procesando código: ${error.message}`);
+      }
+      
       setPlateData(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCameraError = (errorMessage) => {
+    setError(errorMessage);
+    setScanning(false);
+  };
+
+  const startScanning = () => {
+    setError('');
+    setScannedData(null);
+    setPlateData(null);
+    setScanning(true);
+  };
+
+  const stopScanning = () => {
+    setScanning(false);
   };
 
   const resetScanner = () => {
@@ -387,7 +145,7 @@ const PlateWithdrawalEnhanced = ({ onNavigate }) => {
     <div>
       <button onClick={() => onNavigate('inventario-placas')}>← Volver al Inventario</button>
       
-      <h2>Retiro de Placas - Scanner Mejorado</h2>
+      <h2>Retiro de Placas</h2>
       <p>Escanea el código de barras de la placa para ver su información</p>
 
       {error && (
@@ -402,119 +160,41 @@ const PlateWithdrawalEnhanced = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Controles del escáner */}
+      {/* Controles principales */}
       <div style={{ marginBottom: '20px' }}>
         {!scanning && !scannedData && (
-          <div>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ marginRight: '10px' }}>
-                <input
-                  type="checkbox"
-                  checked={autoFocusEnabled}
-                  onChange={(e) => setAutoFocusEnabled(e.target.checked)}
-                  style={{ marginRight: '5px' }}
-                />
-                Autoenfoque automático
-              </label>
-            </div>
-            
-            <button 
-              onClick={startScanner}
-              style={{
-                padding: '15px 30px',
-                fontSize: '18px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer'
-              }}
-            >
-              📷 Iniciar Escáner Mejorado
-            </button>
-          </div>
+          <button 
+            onClick={startScanning}
+            style={{
+              padding: '15px 30px',
+              fontSize: '18px',
+              backgroundColor: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+          >
+            📷 Iniciar Escáner
+          </button>
         )}
 
         {scanning && (
-          <div style={{ marginBottom: '15px' }}>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
-              <button 
-                onClick={stopScanner}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer'
-                }}
-              >
-                ⏹️ Detener
-              </button>
-              
-              <button 
-                onClick={triggerManualFocus}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer'
-                }}
-              >
-                🎯 Enfocar
-              </button>
-              
-              {cameraCapabilities?.zoom && (
-                <>
-                  <button 
-                    onClick={() => adjustZoom(currentZoom + 0.5)}
-                    disabled={currentZoom >= (cameraCapabilities.zoom.max || 3)}
-                    style={{
-                      padding: '10px 15px',
-                      backgroundColor: '#ffc107',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '5px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🔍+ Zoom In
-                  </button>
-                  
-                  <button 
-                    onClick={() => adjustZoom(currentZoom - 0.5)}
-                    disabled={currentZoom <= (cameraCapabilities.zoom.min || 1)}
-                    style={{
-                      padding: '10px 15px',
-                      backgroundColor: '#6c757d',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '5px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🔍- Zoom Out
-                  </button>
-                </>
-              )}
-            </div>
-            
-            <div style={{ fontSize: '14px', color: '#666' }}>
-              <p>💡 <strong>Tips para mejor detección:</strong></p>
-              <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
-                <li>Mantén el código de barras centrado en el área verde</li>
-                <li>Asegúrate de tener buena iluminación</li>
-                <li>Mantén distancia de 10-20cm del código</li>
-                <li>Usa el botón "Enfocar" si la imagen se ve borrosa</li>
-                <li>Si tienes zoom, úsalo para códigos pequeños</li>
-              </ul>
-              {cameraCapabilities?.zoom && (
-                <p>🔍 Zoom actual: {currentZoom.toFixed(1)}x</p>
-              )}
-            </div>
-          </div>
+          <button 
+            onClick={stopScanning}
+            style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              backgroundColor: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              marginBottom: '15px'
+            }}
+          >
+            ⏹️ Detener Escáner
+          </button>
         )}
 
         {scannedData && (
@@ -535,55 +215,47 @@ const PlateWithdrawalEnhanced = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* Área del escáner mejorada */}
+      {/* Cámara profesional */}
       {scanning && (
         <div style={{
           border: '2px solid #28a745',
           borderRadius: '10px',
-          padding: '10px',
+          padding: '15px',
           marginBottom: '20px',
-          textAlign: 'center',
-          position: 'relative'
+          backgroundColor: '#f8f9fa'
         }}>
-          <div 
-            ref={scannerRef}
-            onClick={triggerManualFocus} // Click para enfocar
+          <BarcodeCamera
+            isActive={scanning}
+            onCodeDetected={handleBarcodeDetected}
+            onError={handleCameraError}
             style={{
-              width: '100%',
-              maxWidth: '640px',
-              height: '480px',
-              margin: '0 auto',
-              cursor: 'crosshair',
-              position: 'relative'
+              maxWidth: '600px',
+              margin: '0 auto'
             }}
           />
           
-          {/* Overlay de área de escaneo */}
           <div style={{
-            position: 'absolute',
-            top: '25%',
-            left: '20%',
-            right: '20%',
-            bottom: '25%',
-            border: '2px solid #00ff00',
+            marginTop: '15px',
+            padding: '10px',
+            backgroundColor: '#e9ecef',
             borderRadius: '5px',
-            pointerEvents: 'none',
-            backgroundColor: 'rgba(0, 255, 0, 0.1)'
+            fontSize: '14px',
+            textAlign: 'center'
           }}>
-            <div style={{
-              position: 'absolute',
-              top: '-25px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              backgroundColor: '#00ff00',
-              color: 'white',
-              padding: '5px 10px',
-              borderRadius: '3px',
-              fontSize: '12px',
-              fontWeight: 'bold'
+            <strong>💡 Tips para mejor detección:</strong>
+            <ul style={{ 
+              margin: '8px 0 0 0', 
+              paddingLeft: '0', 
+              listStyle: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
             }}>
-              ÁREA DE ESCANEO
-            </div>
+              <li>• Mantén el código centrado en el área verde</li>
+              <li>• Asegúrate de tener buena iluminación</li>
+              <li>• Mantén distancia de 10-20cm del código</li>
+              <li>• Toca la pantalla para enfocar manualmente</li>
+            </ul>
           </div>
         </div>
       )}
@@ -609,7 +281,7 @@ const PlateWithdrawalEnhanced = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Datos de la placa (simplificados por ahora) */}
+      {/* Datos de la placa */}
       {plateData && (
         <div style={{
           border: '1px solid #ddd',
@@ -617,7 +289,7 @@ const PlateWithdrawalEnhanced = ({ onNavigate }) => {
           padding: '20px',
           backgroundColor: '#f8f9fa'
         }}>
-          <h3>✅ Placa Encontrada</h3>
+          <h3>✅ Información de la Placa</h3>
           
           <div style={{
             display: 'grid',
@@ -629,13 +301,14 @@ const PlateWithdrawalEnhanced = ({ onNavigate }) => {
               <h4>Identificación</h4>
               <p><strong>ID:</strong> {plateData.id}</p>
               <p><strong>ID Visual:</strong> {plateData.id_visual}</p>
-              <p><strong>Tema:</strong> {plateData.id_tema}</p>
-              <p><strong>Subtema:</strong> {plateData.id_subtema}</p>
+              <p><strong>Tema:</strong> {plateData.id_tema} - {plateData.tema?.nombre}</p>
+              <p><strong>Subtema:</strong> {plateData.id_subtema} - {plateData.subtema?.nombre}</p>
               <p><strong>Caja:</strong> {plateData.caja}</p>
             </div>
 
             <div>
               <h4>Detalles</h4>
+              <p><strong>Tinción:</strong> {plateData.tincion?.nombre} ({plateData.tincion?.tipo})</p>
               <p><strong>Estado:</strong> {plateData.estado_placa}</p>
               <p><strong>Último Uso:</strong> {formatDate(plateData.ultimo_uso)}</p>
               <p><strong>Creación:</strong> {formatDate(plateData.creacion)}</p>
@@ -648,10 +321,71 @@ const PlateWithdrawalEnhanced = ({ onNavigate }) => {
               <p>{plateData.observaciones}</p>
             </div>
           )}
+
+          {/* Mostrar imágenes si existen */}
+          {(plateData.imagen_macro_url || plateData.imagen_micro_url || plateData.codigo_barra_url) && (
+            <div style={{ marginTop: '20px' }}>
+              <h4>Imágenes</h4>
+              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                {plateData.imagen_macro_url && (
+                  <div>
+                    <h5>Imagen Macro</h5>
+                    <img 
+                      src={plateData.imagen_macro_url} 
+                      alt="Imagen macro" 
+                      style={{ 
+                        maxWidth: '200px', 
+                        maxHeight: '200px',
+                        border: '1px solid #ddd',
+                        borderRadius: '5px'
+                      }} 
+                    />
+                  </div>
+                )}
+                
+                {plateData.imagen_micro_url && plateData.imagen_micro_url.length > 0 && (
+                  <div>
+                    <h5>Imágenes Microscópicas ({plateData.imagen_micro_url.length})</h5>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      {plateData.imagen_micro_url.map((url, index) => (
+                        <img 
+                          key={index}
+                          src={url} 
+                          alt={`Imagen micro ${index + 1}`} 
+                          style={{ 
+                            width: '100px', 
+                            height: '100px',
+                            objectFit: 'cover',
+                            border: '1px solid #ddd',
+                            borderRadius: '5px'
+                          }} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {plateData.codigo_barra_url && (
+                  <div>
+                    <h5>Código de Barras</h5>
+                    <img 
+                      src={plateData.codigo_barra_url} 
+                      alt="Código de barras" 
+                      style={{ 
+                        maxWidth: '200px',
+                        border: '1px solid #ddd',
+                        borderRadius: '5px'
+                      }} 
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
 
-export default PlateWithdrawalEnhanced;
+export default PlateWithdrawal;
