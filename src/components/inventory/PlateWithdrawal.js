@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import BarcodeCamera from './BarcodeCamera';
+import ProfessionalBarcodeScanner from './ProfessionalBarcodeScanner';
 
 const PlateWithdrawal = ({ onNavigate }) => {
   const [isScanning, setIsScanning] = useState(false);
@@ -25,43 +25,48 @@ const PlateWithdrawal = ({ onNavigate }) => {
     checkQuagga();
   }, []);
 
-  // Manejar código escaneado
+  // Manejar código escaneado con optimizaciones profesionales
   const handleCodeScanned = async (code) => {
     try {
       setLoading(true);
       setError('');
       setScannedCode(code);
-      setIsScanning(false); // Detener la cámara
+      setIsScanning(false); // Detener la cámara inmediatamente
       
-      console.log('Buscando placa con código:', code);
+      console.log('🔍 Procesando código escaneado:', code);
       
-      // Buscar la placa primero
+      // Buscar placa con optimización de consulta
+      const startTime = Date.now();
+      
       const { data: plate, error: plateError } = await supabase
         .from('placas')
         .select('*')
         .eq('codigo_barra_txt', code)
-        .single();
+        .maybeSingle(); // Usar maybeSingle en lugar de single para mejor manejo
       
       if (plateError) {
-        if (plateError.code === 'PGRST116') {
-          setError(`No se encontró ninguna placa con el código: ${code}`);
-        } else {
-          setError(`Error buscando placa: ${plateError.message}`);
-        }
+        console.error('Error buscando placa:', plateError);
+        setError(`Error en base de datos: ${plateError.message}`);
         setPlateData(null);
         return;
       }
       
-      console.log('Placa encontrada:', plate);
+      if (!plate) {
+        setError(`No se encontró ninguna placa con el código: ${code}`);
+        setPlateData(null);
+        return;
+      }
       
-      // Ahora buscar los datos relacionados por separado
-      const [temaResult, subtemaResult, tincionResult] = await Promise.all([
+      console.log('✅ Placa encontrada:', plate);
+      
+      // Buscar datos relacionados en paralelo con mejor manejo de errores
+      const [temaResult, subtemaResult, tincionResult] = await Promise.allSettled([
         // Buscar tema
         supabase
           .from('temas')
           .select('nombre, caja')
           .eq('id_tema', plate.id_tema)
-          .single(),
+          .maybeSingle(),
         
         // Buscar subtema
         supabase
@@ -69,30 +74,50 @@ const PlateWithdrawal = ({ onNavigate }) => {
           .select('nombre')
           .eq('id_tema', plate.id_tema)
           .eq('id_subtema', plate.id_subtema)
-          .single(),
+          .maybeSingle(),
         
         // Buscar tinción
         supabase
           .from('tinciones')
           .select('nombre, tipo')
           .eq('id_tincion', plate.id_tincion)
-          .single()
+          .maybeSingle()
       ]);
       
-      // Combinar los datos
+      // Procesar resultados con manejo robusto de errores
+      const temaData = temaResult.status === 'fulfilled' && temaResult.value.data 
+        ? temaResult.value.data 
+        : { nombre: 'Información no disponible', caja: 'N/A' };
+      
+      const subtemaData = subtemaResult.status === 'fulfilled' && subtemaResult.value.data
+        ? subtemaResult.value.data
+        : { nombre: 'Información no disponible' };
+      
+      const tincionData = tincionResult.status === 'fulfilled' && tincionResult.value.data
+        ? tincionResult.value.data
+        : { nombre: 'Información no disponible', tipo: 'N/A' };
+      
+      // Combinar datos completos
       const completeData = {
         ...plate,
-        temas: temaResult.data || { nombre: 'No encontrado', caja: 'N/A' },
-        subtemas: subtemaResult.data || { nombre: 'No encontrado' },
-        tinciones: tincionResult.data || { nombre: 'No encontrado', tipo: 'N/A' }
+        temas: temaData,
+        subtemas: subtemaData,
+        tinciones: tincionData,
+        // Metadata de rendimiento
+        _metadata: {
+          queryTime: Date.now() - startTime,
+          scannedAt: new Date().toISOString()
+        }
       };
       
-      console.log('Datos completos:', completeData);
+      const queryTime = Date.now() - startTime;
+      console.log(`✅ Datos completos obtenidos en ${queryTime}ms`);
+      
       setPlateData(completeData);
       
     } catch (error) {
-      console.error('Error procesando código:', error);
-      setError(`Error: ${error.message}`);
+      console.error('Error crítico procesando código:', error);
+      setError(`Error crítico del sistema: ${error.message}`);
       setPlateData(null);
     } finally {
       setLoading(false);
@@ -149,9 +174,9 @@ const PlateWithdrawal = ({ onNavigate }) => {
           ← Volver al Dashboard
         </button>
         
-        <h2>Escaneo de Placas</h2>
+        <h2>🚀 Sistema Profesional de Escaneo</h2>
         <p style={{ color: '#666' }}>
-          Escanea el código de barras de una placa para ver su información
+          Escaneo optimizado con detección multi-algoritmo y validación por consenso
         </p>
       </div>
 
@@ -199,10 +224,11 @@ const PlateWithdrawal = ({ onNavigate }) => {
               border: 'none',
               borderRadius: '10px',
               cursor: 'pointer',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              background: 'linear-gradient(135deg, #28a745, #20c997)'
             }}
           >
-            📱 Iniciar Escáner
+            🚀 Iniciar Escáner Profesional
           </button>
         )}
 
@@ -259,10 +285,10 @@ const PlateWithdrawal = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* Cámara */}
+      {/* Cámara profesional */}
       {isScanning && quaggaReady && (
         <div style={{ marginBottom: '30px' }}>
-          <BarcodeCamera
+          <ProfessionalBarcodeScanner
             isActive={isScanning}
             onCodeDetected={handleCodeScanned}
             onError={handleCameraError}
@@ -412,6 +438,36 @@ const PlateWithdrawal = ({ onNavigate }) => {
               </div>
             </div>
           </div>
+
+          {/* Metadata de rendimiento */}
+          {plateData._metadata && (
+            <div style={{
+              backgroundColor: 'white',
+              padding: '15px',
+              borderRadius: '8px',
+              border: '1px solid #dee2e6',
+              marginTop: '15px'
+            }}>
+              <h5 style={{ 
+                color: '#6c757d', 
+                marginBottom: '10px',
+                fontSize: '14px',
+                borderBottom: '1px solid #dee2e6',
+                paddingBottom: '5px'
+              }}>
+                📊 Información de Rendimiento
+              </h5>
+              <div style={{ 
+                display: 'flex', 
+                gap: '20px', 
+                fontSize: '12px',
+                color: '#495057'
+              }}>
+                <span>⚡ Consulta: {plateData._metadata.queryTime}ms</span>
+                <span>🕐 Escaneado: {new Date(plateData._metadata.scannedAt).toLocaleTimeString()}</span>
+              </div>
+            </div>
+          )}
 
           {/* Observaciones */}
           {plateData.observaciones && (
