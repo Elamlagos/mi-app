@@ -3,145 +3,265 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 const BarcodeCamera = ({ onCodeDetected, onError, isActive = false }) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const quaggaRef = useRef(null);
+  const mountedRef = useRef(true);
   const [status, setStatus] = useState('idle'); // idle, starting, ready, error
+
+  // Limpiar recursos
+  const cleanup = useCallback(() => {
+    console.log('🧹 Limpiando recursos...');
+    
+    try {
+      // Detener Quagga
+      if (quaggaRef.current && window.Quagga) {
+        window.Quagga.stop();
+        window.Quagga.offDetected();
+        quaggaRef.current = null;
+      }
+    } catch (error) {
+      console.warn('Error deteniendo Quagga:', error);
+    }
+    
+    try {
+      // Detener stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => {
+          if (track.readyState === 'live') {
+            track.stop();
+          }
+        });
+        streamRef.current = null;
+      }
+    } catch (error) {
+      console.warn('Error deteniendo stream:', error);
+    }
+    
+    try {
+      // Limpiar video
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+        videoRef.current.removeEventListener('loadedmetadata', () => {});
+      }
+    } catch (error) {
+      console.warn('Error limpiando video:', error);
+    }
+    
+    setStatus('idle');
+  }, []);
 
   // Detección de códigos usando QuaggaJS
   const startDetection = useCallback(() => {
-    if (!window.Quagga || !videoRef.current) {
-      onError('Librería de escaneo no disponible');
+    if (!window.Quagga) {
+      console.error('QuaggaJS no está disponible');
+      onError('Librería de escaneo no disponible. Asegúrate de que QuaggaJS esté cargado.');
       return;
     }
 
-    window.Quagga.init({
-      inputStream: {
-        name: "Live",
-        type: "LiveStream",
-        target: videoRef.current,
-        constraints: {
-          width: 1280,
-          height: 720,
-          facingMode: "environment"
+    if (!videoRef.current) {
+      console.error('Video ref no disponible');
+      onError('Error inicializando video para escaneo');
+      return;
+    }
+
+    try {
+      window.Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: videoRef.current,
+          constraints: {
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 },
+            facingMode: "environment"
+          }
+        },
+        decoder: {
+          readers: ["code_128_reader", "ean_reader", "code_39_reader"]
+        },
+        locate: true,
+        locator: {
+          patchSize: "medium",
+          halfSample: true
+        },
+        frequency: 10,
+        debug: false
+      }, (err) => {
+        if (err) {
+          console.error('Error inicializando Quagga:', err);
+          onError('Error inicializando el escáner de códigos');
+          return;
         }
-      },
-      decoder: {
-        readers: ["code_128_reader"] // Solo CODE128 para simplificar
-      },
-      locate: true,
-      locator: {
-        patchSize: "medium",
-        halfSample: true
-      }
-    }, (err) => {
-      if (err) {
-        console.error('Error inicializando Quagga:', err);
-        onError('Error inicializando el escáner');
-        return;
-      }
-      
-      window.Quagga.start();
-      
-      // Configurar detección de códigos
-      window.Quagga.onDetected((data) => {
-        const code = data.codeResult.code;
         
-        // Validar que sea un código de 6 dígitos
-        if (/^\d{6}$/.test(code)) {
-          console.log('Código detectado:', code);
-          onCodeDetected(code);
+        if (!mountedRef.current) {
+          console.log('Componente desmontado, no iniciando Quagga');
+          return;
+        }
+        
+        try {
+          window.Quagga.start();
+          quaggaRef.current = true;
           
-          // Opcional: detener detección después de encontrar código
-          window.Quagga.stop();
+          // Configurar detección de códigos
+          window.Quagga.onDetected((data) => {
+            try {
+              const code = data.codeResult.code;
+              
+              // Validar que sea un código de 6 dígitos
+              if (/^\d{6}$/.test(code) && data.codeResult.confidence > 75) {
+                console.log('Código detectado:', code, 'Confianza:', data.codeResult.confidence);
+                
+                // Detener escáner después de detectar
+                if (window.Quagga && quaggaRef.current) {
+                  window.Quagga.stop();
+                  quaggaRef.current = null;
+                }
+                
+                onCodeDetected(code);
+              }
+            } catch (detectionError) {
+              console.error('Error procesando detección:', detectionError);
+            }
+          });
+          
+        } catch (startError) {
+          console.error('Error iniciando Quagga:', startError);
+          onError('Error iniciando el escáner');
         }
       });
-    });
+    } catch (initError) {
+      console.error('Error configurando Quagga:', initError);
+      onError('Error configurando el escáner de códigos');
+    }
   }, [onError, onCodeDetected]);
 
   // Iniciar cámara
   const startCamera = useCallback(async () => {
-    if (!isActive) return;
+    if (!isActive || !mountedRef.current) return;
     
     try {
       setStatus('starting');
+      console.log('📷 Solicitando acceso a la cámara...');
       
-      // Solicitar acceso a la cámara trasera
+      // Verificar si getUserMedia está disponible
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Tu navegador no soporta acceso a la cámara');
+      }
+      
+      // Solicitar acceso a la cámara
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { ideal: 'environment' }, // Cámara trasera
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          facingMode: { ideal: 'environment' },
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 }
+        },
+        audio: false
       });
+      
+      if (!mountedRef.current) {
+        // Componente desmontado mientras esperábamos la cámara
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
       
       streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setStatus('ready');
         
-        // Iniciar detección cuando el video esté listo
-        videoRef.current.addEventListener('loadedmetadata', () => {
-          startDetection();
-        });
+        // Esperar a que el video esté listo
+        const handleLoadedMetadata = () => {
+          if (mountedRef.current) {
+            console.log('📹 Video listo, iniciando detección...');
+            setStatus('ready');
+            
+            // Pequeño delay antes de iniciar detección
+            setTimeout(() => {
+              if (mountedRef.current) {
+                startDetection();
+              }
+            }, 500);
+          }
+        };
+        
+        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+        
+        try {
+          await videoRef.current.play();
+        } catch (playError) {
+          console.warn('Error reproduciendo video:', playError);
+          // Continuar anyway, a veces funciona sin play()
+        }
       }
       
     } catch (error) {
       console.error('Error accediendo a la cámara:', error);
+      
+      let errorMessage = 'No se pudo acceder a la cámara.';
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Permiso de cámara denegado. Por favor, permite el acceso a la cámara.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'No se encontró ninguna cámara en tu dispositivo.';
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = 'Tu navegador no soporta acceso a la cámara.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setStatus('error');
-      onError('No se pudo acceder a la cámara. Verifica los permisos.');
+      onError(errorMessage);
     }
   }, [isActive, onError, startDetection]);
 
   // Detener cámara
   const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    setStatus('idle');
-  }, []);
+    cleanup();
+  }, [cleanup]);
 
   // Mostrar indicador de enfoque
   const showFocusIndicator = useCallback((x, y) => {
-    const indicator = document.createElement('div');
-    indicator.style.cssText = `
-      position: absolute;
-      left: ${x - 25}px;
-      top: ${y - 25}px;
-      width: 50px;
-      height: 50px;
-      border: 2px solid #00ff00;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 1000;
-      animation: focusRing 1s ease-out forwards;
-    `;
-    
-    // Agregar animación CSS si no existe
-    if (!document.getElementById('focus-animation')) {
-      const style = document.createElement('style');
-      style.id = 'focus-animation';
-      style.textContent = `
-        @keyframes focusRing {
-          0% { transform: scale(1.5); opacity: 1; }
-          100% { transform: scale(1); opacity: 0; }
-        }
+    try {
+      const indicator = document.createElement('div');
+      indicator.style.cssText = `
+        position: absolute;
+        left: ${x - 25}px;
+        top: ${y - 25}px;
+        width: 50px;
+        height: 50px;
+        border: 2px solid #00ff00;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 1000;
+        animation: focusRing 1s ease-out forwards;
       `;
-      document.head.appendChild(style);
-    }
-    
-    const container = videoRef.current.parentElement;
-    container.style.position = 'relative';
-    container.appendChild(indicator);
-    
-    setTimeout(() => {
-      if (indicator.parentElement) {
-        indicator.parentElement.removeChild(indicator);
+      
+      // Agregar animación CSS si no existe
+      if (!document.getElementById('focus-animation')) {
+        const style = document.createElement('style');
+        style.id = 'focus-animation';
+        style.textContent = `
+          @keyframes focusRing {
+            0% { transform: scale(1.5); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+          }
+        `;
+        document.head.appendChild(style);
       }
-    }, 1000);
+      
+      const container = videoRef.current?.parentElement;
+      if (container) {
+        container.style.position = 'relative';
+        container.appendChild(indicator);
+        
+        setTimeout(() => {
+          if (indicator.parentElement) {
+            indicator.parentElement.removeChild(indicator);
+          }
+        }, 1000);
+      }
+    } catch (error) {
+      console.warn('Error mostrando indicador de enfoque:', error);
+    }
   }, []);
 
   // Autoenfoque al tocar la pantalla
@@ -150,6 +270,8 @@ const BarcodeCamera = ({ onCodeDetected, onError, isActive = false }) => {
     
     try {
       const videoTrack = streamRef.current.getVideoTracks()[0];
+      if (!videoTrack) return;
+      
       const capabilities = videoTrack.getCapabilities();
       
       // Intentar autoenfoque si está disponible
@@ -160,11 +282,13 @@ const BarcodeCamera = ({ onCodeDetected, onError, isActive = false }) => {
       }
       
       // Indicador visual del toque
-      const rect = videoRef.current.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      
-      showFocusIndicator(x, y);
+      if (videoRef.current) {
+        const rect = videoRef.current.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
+        showFocusIndicator(x, y);
+      }
       
     } catch (error) {
       console.warn('Autoenfoque no disponible:', error);
@@ -173,6 +297,8 @@ const BarcodeCamera = ({ onCodeDetected, onError, isActive = false }) => {
 
   // Efectos
   useEffect(() => {
+    mountedRef.current = true;
+    
     if (isActive) {
       startCamera();
     } else {
@@ -180,12 +306,10 @@ const BarcodeCamera = ({ onCodeDetected, onError, isActive = false }) => {
     }
     
     return () => {
-      stopCamera();
-      if (window.Quagga) {
-        window.Quagga.stop();
-      }
+      mountedRef.current = false;
+      cleanup();
     };
-  }, [isActive, startCamera, stopCamera]);
+  }, [isActive, startCamera, stopCamera, cleanup]);
 
   return (
     <div style={{

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import BarcodeCamera from './BarcodeCamera';
 
@@ -8,6 +8,22 @@ const PlateWithdrawal = ({ onNavigate }) => {
   const [plateData, setPlateData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [quaggaReady, setQuaggaReady] = useState(false);
+
+  // Verificar si QuaggaJS está disponible
+  useEffect(() => {
+    const checkQuagga = () => {
+      if (window.Quagga) {
+        setQuaggaReady(true);
+        console.log('✅ QuaggaJS está disponible');
+      } else {
+        console.log('⏳ Esperando QuaggaJS...');
+        setTimeout(checkQuagga, 500);
+      }
+    };
+    
+    checkQuagga();
+  }, []);
 
   // Manejar código escaneado
   const handleCodeScanned = async (code) => {
@@ -19,15 +35,10 @@ const PlateWithdrawal = ({ onNavigate }) => {
       
       console.log('Buscando placa con código:', code);
       
-      // Buscar la placa en la base de datos
+      // Buscar la placa primero
       const { data: plate, error: plateError } = await supabase
         .from('placas')
-        .select(`
-          *,
-          temas(nombre, caja),
-          subtemas(nombre),
-          tinciones(nombre, tipo)
-        `)
+        .select('*')
         .eq('codigo_barra_txt', code)
         .single();
       
@@ -42,7 +53,42 @@ const PlateWithdrawal = ({ onNavigate }) => {
       }
       
       console.log('Placa encontrada:', plate);
-      setPlateData(plate);
+      
+      // Ahora buscar los datos relacionados por separado
+      const [temaResult, subtemaResult, tincionResult] = await Promise.all([
+        // Buscar tema
+        supabase
+          .from('temas')
+          .select('nombre, caja')
+          .eq('id_tema', plate.id_tema)
+          .single(),
+        
+        // Buscar subtema
+        supabase
+          .from('subtemas')
+          .select('nombre')
+          .eq('id_tema', plate.id_tema)
+          .eq('id_subtema', plate.id_subtema)
+          .single(),
+        
+        // Buscar tinción
+        supabase
+          .from('tinciones')
+          .select('nombre, tipo')
+          .eq('id_tincion', plate.id_tincion)
+          .single()
+      ]);
+      
+      // Combinar los datos
+      const completeData = {
+        ...plate,
+        temas: temaResult.data || { nombre: 'No encontrado', caja: 'N/A' },
+        subtemas: subtemaResult.data || { nombre: 'No encontrado' },
+        tinciones: tincionResult.data || { nombre: 'No encontrado', tipo: 'N/A' }
+      };
+      
+      console.log('Datos completos:', completeData);
+      setPlateData(completeData);
       
     } catch (error) {
       console.error('Error procesando código:', error);
@@ -61,6 +107,11 @@ const PlateWithdrawal = ({ onNavigate }) => {
 
   // Reiniciar escaneo
   const startNewScan = () => {
+    if (!quaggaReady) {
+      setError('El escáner aún no está listo. Por favor, espera un momento.');
+      return;
+    }
+    
     setScannedCode(null);
     setPlateData(null);
     setError('');
@@ -120,7 +171,24 @@ const PlateWithdrawal = ({ onNavigate }) => {
 
       {/* Controles */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-        {!isScanning && !scannedCode && (
+        {!quaggaReady && (
+          <div style={{
+            backgroundColor: '#fff3cd',
+            color: '#856404',
+            padding: '15px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '1px solid #ffeaa7'
+          }}>
+            <strong>⏳ Cargando escáner...</strong>
+            <br />
+            <span style={{ fontSize: '14px' }}>
+              Esperando que se cargue la librería de escaneo
+            </span>
+          </div>
+        )}
+
+        {quaggaReady && !isScanning && !scannedCode && (
           <button
             onClick={() => setIsScanning(true)}
             style={{
@@ -135,6 +203,23 @@ const PlateWithdrawal = ({ onNavigate }) => {
             }}
           >
             📱 Iniciar Escáner
+          </button>
+        )}
+
+        {!quaggaReady && !isScanning && !scannedCode && (
+          <button
+            disabled
+            style={{
+              padding: '15px 30px',
+              fontSize: '18px',
+              backgroundColor: '#ccc',
+              color: '#666',
+              border: 'none',
+              borderRadius: '10px',
+              cursor: 'not-allowed'
+            }}
+          >
+            📱 Cargando Escáner...
           </button>
         )}
 
@@ -175,7 +260,7 @@ const PlateWithdrawal = ({ onNavigate }) => {
       </div>
 
       {/* Cámara */}
-      {isScanning && (
+      {isScanning && quaggaReady && (
         <div style={{ marginBottom: '30px' }}>
           <BarcodeCamera
             isActive={isScanning}
