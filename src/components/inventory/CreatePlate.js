@@ -333,25 +333,31 @@ const CreatePlate = ({ onNavigate }) => {
     return data.downloadUrl;
   };
 
-  // 🚀 NUEVA FUNCIÓN SIMPLE PARA GENERAR CÓDIGOS
-  const generateBarcodeImage = async (plateId, idVisual) => {
-    try {
-      console.log('🚀 Generando código con sistema simple...');
-      
-      // Esperar que el sistema esté listo
-      await SimpleBarcodeGenerator.waitForSystem();
-      
-      // Generar código usando el sistema simple
-      const base64Data = await SimpleBarcodeGenerator.generateBarcode(plateId, idVisual);
-      
-      console.log('✅ Código generado exitosamente');
-      return base64Data;
-      
-    } catch (error) {
-      console.error('❌ Error generando código:', error);
-      throw new Error(`Error generando código de barras: ${error.message}`);
-    }
-  };
+  // 🚀 REEMPLAZA esta función en CreatePlate.js (busca generateBarcodeImage)
+
+const generateBarcodeImage = async (plateId, idVisual) => {
+  try {
+    console.log('🚀 Generando código optimizado para portaobjetos...');
+    
+    // Esperar que el sistema esté listo
+    await SimpleBarcodeGenerator.waitForSystem();
+    
+    // 🎯 GENERAR CÓDIGO OPTIMIZADO:
+    // - Código visual (T01-S02-001) ARRIBA en letras grandes
+    // - Barras gruesas para impresión pequeña
+    // - ID numérico (123456) abajo
+    const base64Data = await SimpleBarcodeGenerator.generateBarcode(plateId, idVisual);
+    
+    console.log('✅ Código optimizado generado exitosamente');
+    console.log('🖨️ Configuración: Visual arriba (18px), barras gruesas (4px), perfecto para portaobjetos');
+    
+    return base64Data;
+    
+  } catch (error) {
+    console.error('❌ Error generando código optimizado:', error);
+    throw new Error(`Error generando código de barras: ${error.message}`);
+  }
+};
 
   // 🚀 FUNCIÓN SIMPLIFICADA PARA SUBIR CÓDIGOS
   const uploadBarcodeToGitHub = async (plateId, idTema, idSubtema, base64Data) => {

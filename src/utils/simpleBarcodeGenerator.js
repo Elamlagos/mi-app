@@ -1,12 +1,12 @@
 /**
- * 🚀 GENERADOR SIMPLE DE CÓDIGOS DE BARRAS
- * Sistema optimizado para generar códigos rápido y sin errores
+ * 🚀 GENERADOR OPTIMIZADO PARA PORTAOBJETOS
+ * Configurado para impresión pequeña con máxima legibilidad
  */
 
 export class SimpleBarcodeGenerator {
   
   /**
-   * Genera un código de barras simple y efectivo
+   * Genera un código de barras optimizado para portaobjetos
    * @param {string|number} plateId - ID numérico de la placa (6 dígitos)
    * @param {string} visualId - ID visual para mostrar (ej: T01-S02-001)
    * @returns {Promise<string>} Base64 del código generado
@@ -14,7 +14,7 @@ export class SimpleBarcodeGenerator {
   static async generateBarcode(plateId, visualId) {
     return new Promise((resolve, reject) => {
       try {
-        console.log('🔄 Iniciando generación de código...');
+        console.log('🔄 Generando código optimizado para portaobjetos...');
         console.log('📋 Datos:', { plateId, visualId });
 
         // PASO 1: Verificar que JsBarcode esté disponible
@@ -28,41 +28,56 @@ export class SimpleBarcodeGenerator {
           throw new Error(`ID de placa inválido: ${plateIdStr}. Debe ser de 6 dígitos.`);
         }
 
-        // PASO 3: Crear canvas con dimensiones optimizadas
+        // PASO 3: Crear canvas optimizado para portaobjetos
         const canvas = document.createElement('canvas');
-        canvas.width = 350;
-        canvas.height = 100;
+        canvas.width = 400;   // Ancho optimizado
+        canvas.height = 120;  // Altura compacta
 
-        // PASO 4: Configuración simple pero efectiva
+        // PASO 4: 🎯 CONFIGURACIÓN OPTIMIZADA PARA PORTAOBJETOS
         const config = {
-          format: "CODE128",           // Formato estándar más compatible
-          width: 2.5,                  // Ancho de barras óptimo
-          height: 50,                  // Altura perfecta para lectura
+          format: "CODE128",           // Formato más denso y confiable
+          width: 4,                    // ✅ BARRAS MÁS GRUESAS (antes 2.5, ahora 4)
+          height: 50,                  // ✅ Altura perfecta para portaobjetos
           displayValue: true,          // Mostrar número legible
-          text: visualId,              // Mostrar ID visual arriba
-          fontSize: 12,                // Tamaño de texto legible
-          textMargin: 8,               // Espaciado del texto
+          text: visualId,              // ✅ CÓDIGO VISUAL ARRIBA
+          fontSize: 40,                // ✅ LETRAS MÁS GRANDES (antes 12, ahora 18)
+          fontOptions: "bold",         // ✅ NEGRITA para mejor legibilidad
+          textAlign: "center",         // Texto centrado
+          textPosition: "top",         // ✅ TEXTO ARRIBA de las barras
+          textMargin: 3,              // Espacio entre texto y barras
           background: "#ffffff",       // Fondo blanco puro
-          lineColor: "#000000",        // Líneas negras puras
-          margin: 10                   // Margen para escaneado
+          lineColor: "#000000",        // Líneas negras puras para máximo contraste
+          margin: 12,                  // Márgenes para impresión
+          marginTop: 5,                // Margen superior reducido
+          marginBottom: 10             // Margen inferior para ID numérico
         };
 
-        console.log('⚙️ Configuración aplicada:', config);
+        console.log('⚙️ Configuración optimizada aplicada:', config);
 
-        // PASO 5: Generar el código
+        // PASO 5: Generar el código principal
         window.JsBarcode(canvas, plateIdStr, config);
 
-        // PASO 6: Convertir a base64
-        const dataUrl = canvas.toDataURL('image/png', 1.0); // Máxima calidad
+        // PASO 6: Agregar el ID numérico DEBAJO del código
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        
+        // Posicionar el ID numérico en la parte inferior
+        const textY = canvas.height - 6;
+        ctx.fillText(plateIdStr, canvas.width / 2, textY);
+
+        // PASO 7: Convertir a base64 con máxima calidad
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
         const base64Data = dataUrl.split(',')[1];
 
-        // PASO 7: Validar resultado
+        // PASO 8: Validar resultado
         if (!base64Data || base64Data.length < 100) {
           throw new Error('Código generado inválido o vacío');
         }
 
-        console.log('✅ Código generado exitosamente');
-        console.log('📊 Tamaño del código:', base64Data.length, 'caracteres');
+        console.log('✅ Código optimizado para portaobjetos generado exitosamente');
+        console.log('🖨️ Listo para imprimir pequeño y ser legible');
         
         resolve(base64Data);
 
@@ -74,7 +89,7 @@ export class SimpleBarcodeGenerator {
   }
 
   /**
-   * Espera a que el sistema de códigos esté listo
+   * Espera a que el sistema esté listo
    * @param {number} maxWait - Tiempo máximo de espera en ms
    * @returns {Promise<boolean>}
    */
@@ -113,7 +128,7 @@ export class SimpleBarcodeGenerator {
    * @returns {Promise<string>}
    */
   static async generateTestCode() {
-    console.log('🧪 Generando código de prueba...');
+    console.log('🧪 Generando código de prueba optimizado...');
     return this.generateBarcode('123456', 'TEST-001');
   }
 
@@ -126,6 +141,13 @@ export class SimpleBarcodeGenerator {
       jsBarcode: !!window.JsBarcode,
       version: window.JsBarcode?.VERSION || 'Desconocida',
       systemReady: !!window.BARCODE_SYSTEM_READY,
+      optimizedFor: 'Portaobjetos - Impresión pequeña',
+      features: [
+        'Código visual arriba en letras grandes',
+        'Barras gruesas para mejor lectura',
+        'ID numérico abajo',
+        'Optimizado para 70x20mm'
+      ],
       timestamp: new Date().toISOString()
     };
   }
@@ -134,4 +156,6 @@ export class SimpleBarcodeGenerator {
 // Exportar también como default para flexibilidad
 export default SimpleBarcodeGenerator;
 
-console.log('📦 SimpleBarcodeGenerator cargado y listo');
+console.log('📦 SimpleBarcodeGenerator OPTIMIZADO cargado');
+console.log('🎯 Configuración: Código visual arriba (18px bold), barras gruesas (4px), ID abajo');
+console.log('🖨️ Perfecto para portaobjetos de ~70x20mm');
