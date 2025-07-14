@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import UltraFastScanner from './UltraFastScanner';
+import { useCart } from '../../hooks/useCart';
+import LoanCart from '../loan/LoanCart';
 
 const PlateWithdrawal = ({ onNavigate }) => {
   const [isScanning, setIsScanning] = useState(false);
@@ -9,6 +11,18 @@ const PlateWithdrawal = ({ onNavigate }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [systemReady, setSystemReady] = useState(false);
+  
+  // 🆕 NUEVOS ESTADOS PARA CARRITO
+  const [cartMode, setCartMode] = useState(false); // Feature flag
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // 🆕 HOOK DEL CARRITO (solo activo si cartMode está habilitado)
+  const {
+    addToCart,
+    totalItems,
+    error: cartError,
+    setError: setCartError
+  } = useCart(cartMode ? currentUser?.id : null);
 
   // Verificar si el sistema está listo
   useEffect(() => {
@@ -25,7 +39,29 @@ const PlateWithdrawal = ({ onNavigate }) => {
     checkSystem();
   }, []);
 
-  // 🚀 MANEJAR CÓDIGO ESCANEADO - SÚPER SIMPLE
+  // 🆕 OBTENER USUARIO ACTUAL
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error obteniendo sesión:', error);
+          return;
+        }
+        
+        if (session?.user) {
+          setCurrentUser(session.user);
+          console.log('✅ Usuario obtenido para carrito:', session.user.id);
+        }
+      } catch (error) {
+        console.error('Error en getCurrentUser:', error);
+      }
+    };
+    
+    getCurrentUser();
+  }, []);
+
+  // 🔄 FUNCIÓN MODIFICADA handleCodeScanned
   const handleCodeScanned = async (code) => {
     try {
       setLoading(true);
@@ -35,7 +71,34 @@ const PlateWithdrawal = ({ onNavigate }) => {
       
       console.log('🔍 Procesando código:', code);
       
-      // Buscar placa en la base de datos
+      // 🆕 MODO CARRITO
+      if (cartMode && currentUser) {
+        try {
+          // Limpiar errores anteriores del carrito
+          if (setCartError) setCartError('');
+          
+          const result = await addToCart(code);
+          
+          console.log('✅ Placa agregada al carrito:', result);
+          
+          // Limpiar la vista de placa individual cuando se agrega al carrito
+          setPlateData(null);
+          
+          // Mostrar mensaje de éxito temporal
+          const successMsg = `✅ ${result.plate?.id_visual || 'Placa'} agregada al carrito`;
+          setError(''); // Limpiar cualquier error previo
+          
+          return;
+          
+        } catch (cartError) {
+          console.error('❌ Error agregando al carrito:', cartError);
+          setError(`❌ ${cartError.message}`);
+          setPlateData(null);
+          return;
+        }
+      }
+      
+      // MODO ACTUAL: Búsqueda directa (MANTENER IGUAL - NO MODIFICAR)
       const { data: plate, error: plateError } = await supabase
         .from('placas')
         .select('*')
@@ -113,6 +176,7 @@ const PlateWithdrawal = ({ onNavigate }) => {
     setScannedCode(null);
     setPlateData(null);
     setError('');
+    if (setCartError) setCartError('');
     setIsScanning(true);
   };
 
@@ -185,27 +249,86 @@ const PlateWithdrawal = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Controles de escaneo */}
+      {/* 🆕 CONTROLES DE ESCANEO MEJORADOS */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
         {systemReady && !isScanning && !scannedCode && (
-          <button
-            onClick={startNewScan}
-            style={{
-              padding: '15px 30px',
-              fontSize: '18px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
+          <div>
+            {/* 🆕 TOGGLE PARA MODO CARRITO */}
+            <div style={{ 
+              marginBottom: '20px',
+              padding: '15px',
+              backgroundColor: '#f8f9fa',
               borderRadius: '10px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 8px rgba(40, 167, 69, 0.3)',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-          >
-            ⚡ Iniciar Escáner Ultra Rápido
-          </button>
+              border: '1px solid #dee2e6'
+            }}>
+              <label style={{ 
+                fontSize: '16px', 
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={cartMode}
+                  onChange={(e) => {
+                    setCartMode(e.target.checked);
+                    // Limpiar datos al cambiar modo
+                    setPlateData(null);
+                    setError('');
+                    if (setCartError) setCartError('');
+                  }}
+                  style={{ 
+                    marginRight: '10px',
+                    transform: 'scale(1.2)'
+                  }}
+                />
+                <span style={{ color: cartMode ? '#007bff' : '#6c757d' }}>
+                  {cartMode ? '🛒 Modo Carrito (NUEVO)' : '📋 Modo Consulta (ACTUAL)'}
+                </span>
+              </label>
+              
+              <div style={{
+                fontSize: '12px',
+                color: '#6c757d',
+                marginTop: '8px',
+                textAlign: 'center'
+              }}>
+                {cartMode 
+                  ? 'Las placas se agregan al carrito para préstamo masivo' 
+                  : 'Solo muestra información de la placa (modo actual)'
+                }
+              </div>
+            </div>
+            
+            {/* 🆕 BOTÓN DE ESCANEO MEJORADO */}
+            <button
+              onClick={startNewScan}
+              disabled={cartMode && !currentUser}
+              style={{
+                padding: '15px 30px',
+                fontSize: '18px',
+                backgroundColor: cartMode && !currentUser ? '#6c757d' : cartMode ? '#007bff' : '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: cartMode && !currentUser ? 'not-allowed' : 'pointer',
+                boxShadow: `0 4px 8px rgba(${cartMode ? '0, 123, 255' : '40, 167, 69'}, 0.3)`,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (!(cartMode && !currentUser)) {
+                  e.target.style.transform = 'translateY(-2px)';
+                }
+              }}
+              onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+            >
+              {cartMode && !currentUser ? '⏳ Cargando Usuario...' : 
+               cartMode ? `🛒 Escanear para Carrito ${totalItems > 0 ? `(${totalItems})` : ''}` : 
+               '⚡ Escáner de Consulta'}
+            </button>
+          </div>
         )}
 
         {!systemReady && (
@@ -273,6 +396,41 @@ const PlateWithdrawal = ({ onNavigate }) => {
         </div>
       )}
 
+      {/* 🆕 CARRITO DE PLACAS (SOLO EN MODO CARRITO) */}
+      {cartMode && currentUser && (
+        <div style={{ marginBottom: '30px' }}>
+          <LoanCart 
+            userId={currentUser.id}
+            onLoanConfirmed={(result) => {
+              // Callback cuando se confirma un préstamo
+              console.log('🎉 Préstamo confirmado:', result);
+              
+              // Limpiar estado
+              setPlateData(null);
+              setError('');
+              setScannedCode(null);
+              
+              // Mostrar mensaje de éxito
+              alert(`🎉 ${result.message}`);
+            }}
+          />
+        </div>
+      )}
+
+      {/* 🆕 MOSTRAR ERRORES DEL CARRITO SI LOS HAY */}
+      {cartMode && cartError && (
+        <div style={{
+          backgroundColor: '#f8d7da',
+          color: '#721c24',
+          padding: '15px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '1px solid #f5c6cb'
+        }}>
+          <strong>⚠️ Error del Carrito:</strong> {cartError}
+        </div>
+      )}
+
       {/* Código escaneado */}
       {scannedCode && (
         <div style={{
@@ -314,8 +472,8 @@ const PlateWithdrawal = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* 🚀 DATOS DE LA PLACA MEJORADOS */}
-      {plateData && (
+      {/* 🔄 DATOS DE LA PLACA (SOLO EN MODO CONSULTA) */}
+      {plateData && !cartMode && (
         <div style={{
           backgroundColor: '#f8f9fa',
           border: '1px solid #dee2e6',
@@ -645,8 +803,9 @@ const PlateWithdrawal = ({ onNavigate }) => {
           color: '#6c757d',
           fontStyle: 'italic'
         }}>
-          💡 <strong>Tip:</strong> El escáner detecta automáticamente códigos de 6 dígitos. 
-          Mantén el código centrado en el área verde para mejor precisión.
+          💡 <strong>Tip:</strong> {cartMode 
+            ? 'En modo carrito, las placas se agregan automáticamente. Usa el carrito para confirmar préstamos masivos.'
+            : 'En modo consulta, solo ves información de la placa. Activa el modo carrito para préstamos.'}
         </p>
       </div>
     </div>
