@@ -84,9 +84,8 @@ const PlateWithdrawal = ({ onNavigate }) => {
           // Limpiar la vista de placa individual cuando se agrega al carrito
           setPlateData(null);
           
-          // Mostrar mensaje de éxito temporal
-          const successMsg = `✅ ${result.plate?.id_visual || 'Placa'} agregada al carrito`;
-          setError(''); // Limpiar cualquier error previo
+          // ✅ CORREGIDO: Usar console.log en lugar de variable no usada
+          console.log(`✅ ${result.plate?.id_visual || 'Placa'} agregada al carrito`);
           
           return;
           

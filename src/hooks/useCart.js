@@ -26,7 +26,7 @@ export const useCart = (userId) => {
   const expirationTimerRef = useRef(null);
   
   // ┌─────────────────────────────────────────────────────────────
-  // │ OBTENER CARRITO DESDE BASE DE DATOS
+  // │ OBTENER CARRITO DESDE BASE DE DATOS - COLUMNAS CORRECTAS
   // └─────────────────────────────────────────────────────────────
   const fetchCart = useCallback(async () => {
     if (!userId) return;
@@ -37,6 +37,7 @@ export const useCart = (userId) => {
       
       const now = new Date().toISOString();
       
+      // 🔧 CONSULTA CON COLUMNAS CORRECTAS
       const { data, error: fetchError } = await supabase
         .from('carritos_prestamo')
         .select(`
@@ -49,8 +50,9 @@ export const useCart = (userId) => {
             id,
             id_visual,
             estado_actual,
-            temas:id_tema (nombre),
-            subtemas:id_subtema (nombre)
+            usuario_actual,
+            id_tema,
+            id_subtema
           )
         `)
         .eq('id_usuario', userId)

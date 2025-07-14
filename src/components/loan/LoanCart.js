@@ -105,22 +105,22 @@ const LoanCart = ({ userId, onLoanConfirmed = null }) => {
   };
 
   // ┌─────────────────────────────────────────────────────────────
-  // │ COMPONENTE: TIMER DE EXPIRACIÓN
+  // │ COMPONENTE: TIMER DE EXPIRACIÓN - FIXED DEPENDENCIES
   // └─────────────────────────────────────────────────────────────
   const ExpirationTimer = () => {
     const [currentTime, setCurrentTime] = useState(Date.now());
 
     useEffect(() => {
-      if (!expirationTime || isEmpty) return;
+      if (!expirationTime || totalItems === 0) return;
 
       const timer = setInterval(() => {
         setCurrentTime(Date.now());
       }, 1000); // Actualizar cada segundo
 
       return () => clearInterval(timer);
-    }, [expirationTime, isEmpty]);
+    }, []); // ✅ CORREGIDO: Solo dependencias necesarias
 
-    if (isEmpty || !expirationTime) return null;
+    if (totalItems === 0 || !expirationTime) return null;
 
     const timeLeft = new Date(expirationTime).getTime() - currentTime;
     const isUrgent = timeLeft < 5 * 60 * 1000; // Menos de 5 minutos

@@ -294,7 +294,7 @@ export const compatibilityService = {
   },
   
   // ┌─────────────────────────────────────────────────────────────
-  // │ REPARAR INCONSISTENCIAS AUTOMÁTICAMENTE
+  // │ REPARAR INCONSISTENCIAS AUTOMÁTICAMENTE - FIXED SWITCH
   // └─────────────────────────────────────────────────────────────
   async repairDataInconsistencies() {
     console.log('🔧 Reparando inconsistencias de datos...');
@@ -334,6 +334,11 @@ export const compatibilityService = {
             // Actualizar estado del usuario
             await this.syncUserPlateStatus(issue.userId);
             repaired++;
+            break;
+            
+          default:
+            // ✅ CORREGIDO: Agregado caso default
+            console.warn('Tipo de inconsistencia desconocido:', issue.type);
             break;
         }
       }

@@ -35,7 +35,7 @@ export class LimitError extends Error {
 export const validationService = {
   
   // ┌─────────────────────────────────────────────────────────────
-  // │ VALIDAR DISPONIBILIDAD DE PLACA (CRÍTICO PARA CONCURRENCIA)
+  // │ VALIDAR DISPONIBILIDAD DE PLACA - COLUMNAS CORRECTAS
   // └─────────────────────────────────────────────────────────────
   async validatePlateAvailability(plateId, excludeUserId = null) {
     console.log(`🔍 Validando disponibilidad de placa ${plateId}`);
@@ -55,7 +55,7 @@ export const validationService = {
       console.log(`📋 Placa ${plate.id_visual}: estado_actual=${plate.estado_actual}, usuario_actual=${plate.usuario_actual}`);
       
       // 2. Verificar estado operacional
-      if (plate.estado_actual !== 'disponible') {
+      if (plate.estado_actual && plate.estado_actual !== 'disponible') {
         throw new ConflictError(`Placa ${plate.id_visual} no está disponible (estado: ${plate.estado_actual})`);
       }
       
