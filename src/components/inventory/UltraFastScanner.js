@@ -1,28 +1,49 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
 /**
- * 🚀 ESCÁNER ULTRA RÁPIDO
- * Usa ZXing (librería de Google) para escaneo en milisegundos
- * Simple, eficiente y sin complicaciones
+ * 🚀 ESCÁNER ULTRA RÁPIDO - VERSIÓN CORREGIDA
+ * Mantiene la cámara seleccionada entre escaneos
  */
 const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
   const videoRef = useRef(null);
   const codeReaderRef = useRef(null);
+  const selectedCameraRef = useRef(null); // 🔧 NUEVO: Recordar cámara seleccionada
+  const streamRef = useRef(null); // 🔧 NUEVO: Referencia al stream
+  
   const [status, setStatus] = useState('idle');
   const [detectionCount, setDetectionCount] = useState(0);
   const [lastCode, setLastCode] = useState('');
 
-  // 🧹 Cleanup súper simple
+  // 🧹 Cleanup mejorado
   const cleanup = useCallback(() => {
     console.log('🧹 Limpiando escáner...');
     
     try {
+      // Detener el stream de video primero
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('🔇 Track de cámara detenido');
+        });
+        streamRef.current = null;
+      }
+      
+      // Limpiar el video element
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      
+      // Reset del code reader
       if (codeReaderRef.current) {
-        codeReaderRef.current.reset();
+        try {
+          codeReaderRef.current.reset();
+        } catch (error) {
+          console.warn('Warning cleanup reader:', error);
+        }
         codeReaderRef.current = null;
       }
     } catch (error) {
-      console.warn('Warning cleanup reader:', error);
+      console.warn('Warning en cleanup:', error);
     }
     
     setStatus('idle');
@@ -30,13 +51,13 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
     setLastCode('');
   }, []);
 
-  // 🚀 Inicializador súper rápido
+  // 🚀 Inicializador mejorado con memoria de cámara
   const initScanner = useCallback(async () => {
     if (!isActive) return;
     
     try {
       setStatus('starting');
-      console.log('🚀 Iniciando escáner ultra rápido...');
+      console.log('🚀 Iniciando escáner (manteniendo cámara seleccionada)...');
 
       // PASO 1: Verificar ZXing
       if (!window.ZXing || !window.BARCODE_SYSTEM_READY) {
@@ -47,16 +68,16 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
       const codeReader = new window.ZXing.BrowserMultiFormatReader();
       codeReaderRef.current = codeReader;
 
-      // PASO 3: Configurar formatos (solo los que necesitamos)
+      // PASO 3: Configurar formatos
       const hints = new Map();
       hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-        window.ZXing.BarcodeFormat.CODE_128,  // Principal para nuestros códigos
-        window.ZXing.BarcodeFormat.CODE_39,   // Backup común
-        window.ZXing.BarcodeFormat.EAN_8,     // Para códigos de 8 dígitos
-        window.ZXing.BarcodeFormat.EAN_13     // Estándar universal
+        window.ZXing.BarcodeFormat.CODE_128,
+        window.ZXing.BarcodeFormat.CODE_39,
+        window.ZXing.BarcodeFormat.EAN_8,
+        window.ZXing.BarcodeFormat.EAN_13
       ]);
 
-      // PASO 4: Buscar cámaras disponibles
+      // PASO 4: Obtener cámaras disponibles
       console.log('📷 Buscando cámaras...');
       const videoInputDevices = await codeReader.getVideoInputDevices();
       
@@ -64,20 +85,54 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
         throw new Error('No se encontraron cámaras en tu dispositivo');
       }
 
-      // PASO 5: Seleccionar la mejor cámara (trasera si está disponible)
-      const backCamera = videoInputDevices.find(device => {
-        const label = device.label.toLowerCase();
-        return label.includes('back') || 
-               label.includes('rear') ||
-               label.includes('environment') ||
-               label.includes('facing back');
-      }) || videoInputDevices[0];
+      // PASO 5: Seleccionar cámara (usar la recordada o buscar la trasera)
+      let selectedCamera = selectedCameraRef.current;
+      
+      if (!selectedCamera) {
+        // Primera vez: buscar cámara trasera
+        selectedCamera = videoInputDevices.find(device => {
+          const label = device.label.toLowerCase();
+          return label.includes('back') || 
+                 label.includes('rear') ||
+                 label.includes('environment') ||
+                 label.includes('facing back');
+        }) || videoInputDevices[0];
+        
+        // Recordar la cámara seleccionada
+        selectedCameraRef.current = selectedCamera;
+        console.log('📱 Primera vez - Cámara seleccionada:', selectedCamera.label || 'Cámara por defecto');
+      } else {
+        // Verificar que la cámara recordada aún existe
+        const cameraStillExists = videoInputDevices.find(device => device.deviceId === selectedCamera.deviceId);
+        if (!cameraStillExists) {
+          console.log('⚠️ Cámara anterior no disponible, seleccionando nueva...');
+          selectedCamera = videoInputDevices[0];
+          selectedCameraRef.current = selectedCamera;
+        } else {
+          console.log('✅ Reutilizando cámara anterior:', selectedCamera.label || 'Cámara recordada');
+        }
+      }
 
-      console.log('📱 Cámara seleccionada:', backCamera.label || 'Cámara por defecto');
+      // PASO 6: Iniciar decodificación continua
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          deviceId: selectedCamera.deviceId,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      
+      // Guardar referencia del stream
+      streamRef.current = stream;
+      
+      // Asignar stream al video
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
 
-      // PASO 6: Iniciar decodificación continua ULTRA RÁPIDA
+      // Iniciar decodificación
       await codeReader.decodeFromVideoDevice(
-        backCamera.deviceId,
+        selectedCamera.deviceId,
         videoRef.current,
         (result, error) => {
           if (result) {
@@ -87,7 +142,7 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
             
             console.log('🔍 Código detectado:', code, '| Intento:', detectionCount + 1);
             
-            // VALIDACIÓN SÚPER SIMPLE: Solo aceptar códigos de 6 dígitos
+            // VALIDACIÓN: Solo aceptar códigos de 6 dígitos
             if (/^\d{6}$/.test(code)) {
               console.log('✅ CÓDIGO VÁLIDO ENCONTRADO:', code);
               
@@ -99,13 +154,13 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
                 onCodeDetected(code);
               }, 100);
               
-              return; // Salir de la función
+              return;
             } else {
               console.log('⚠️ Código ignorado (no es de 6 dígitos):', code);
             }
           }
           
-          // Solo logear errores importantes (no NotFoundException que es normal)
+          // Solo logear errores importantes
           if (error && error.name !== 'NotFoundException' && error.name !== 'ChecksumException') {
             console.warn('⚠️ Error menor de decodificación:', error.name);
           }
@@ -113,11 +168,14 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
       );
 
       setStatus('ready');
-      console.log('✅ Escáner activo y buscando códigos...');
+      console.log('✅ Escáner activo y manteniendo cámara seleccionada');
 
     } catch (error) {
       console.error('❌ Error iniciando escáner:', error);
       setStatus('error');
+      
+      // Cleanup en caso de error
+      cleanup();
       
       // Mensajes de error más amigables
       let message = 'Error iniciando escáner';
@@ -135,7 +193,7 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
     }
   }, [isActive, onError, onCodeDetected, cleanup, detectionCount]);
 
-  // 🎯 Effect principal - súper simple
+  // 🎯 Effect principal
   useEffect(() => {
     if (isActive) {
       initScanner();
@@ -146,6 +204,18 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
     // Cleanup al desmontar
     return cleanup;
   }, [isActive, initScanner, cleanup]);
+
+  // 🔧 NUEVO: Función para resetear cámara manualmente
+  const resetCamera = useCallback(() => {
+    console.log('🔄 Reseteando selección de cámara...');
+    selectedCameraRef.current = null;
+    if (isActive) {
+      cleanup();
+      setTimeout(() => {
+        initScanner();
+      }, 500);
+    }
+  }, [isActive, cleanup, initScanner]);
 
   return (
     <div style={{
@@ -172,7 +242,7 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
         autoPlay
       />
       
-      {/* 🎯 Overlay de escaneo (solo cuando está activo) */}
+      {/* 🎯 Overlay de escaneo */}
       {status === 'ready' && (
         <div style={{
           position: 'absolute',
@@ -230,6 +300,28 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
         {status === 'idle' && '⏸️ Escáner Inactivo'}
       </div>
       
+      {/* 🔧 NUEVO: Botón para resetear cámara */}
+      {status === 'ready' && (
+        <button
+          onClick={resetCamera}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.3)',
+            borderRadius: '15px',
+            padding: '5px 10px',
+            fontSize: '11px',
+            cursor: 'pointer',
+            backdropFilter: 'blur(10px)'
+          }}
+        >
+          🔄 Cambiar Cámara
+        </button>
+      )}
+      
       {/* 📱 Instrucciones */}
       {status === 'ready' && (
         <div style={{
@@ -282,4 +374,4 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
 
 export default UltraFastScanner;
 
-console.log('📦 UltraFastScanner cargado y optimizado');
+console.log('📦 UltraFastScanner CORREGIDO - Mantiene cámara seleccionada');
