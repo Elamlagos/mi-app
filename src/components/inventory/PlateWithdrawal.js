@@ -1,4 +1,4 @@
-// 📦 PLATE WITHDRAWAL COMPONENT - VERSIÓN CORREGIDA
+// 📦 PLATE WITHDRAWAL COMPONENT - VERSIÓN CORREGIDA SIN WARNINGS
 // Archivo: src/components/inventory/PlateWithdrawal.js
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -31,7 +31,7 @@ const PlateWithdrawal = ({ onNavigate }) => {
   // Hook del carrito
   const {
     addToCart,
-    cartItems,
+    // cartItems, // ✅ REMOVIDO - no se usa
     totalItems,
     isEmpty: cartIsEmpty,
     error: cartError,
@@ -48,7 +48,7 @@ const PlateWithdrawal = ({ onNavigate }) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           // Obtener perfil completo del usuario
-          const { data: profile, error } = await supabase
+          const { data: profile } = await supabase // ✅ REMOVIDO error - no se usa
             .from('usuarios')
             .select('id, nombre, apellidos, rol, comite')
             .eq('id', session.user.id)
@@ -74,6 +74,7 @@ const PlateWithdrawal = ({ onNavigate }) => {
   // ┌─────────────────────────────────────────────────────────────
   // │ FUNCIÓN PRINCIPAL DE ESCANEO - VERSIÓN CORREGIDA
   // └─────────────────────────────────────────────────────────────
+  // ✅ AGREGADAS LAS DEPENDENCIAS FALTANTES
   const handleCodeScanned = useCallback(async (code) => {
     const now = Date.now();
     
@@ -194,7 +195,7 @@ const PlateWithdrawal = ({ onNavigate }) => {
         setIsProcessing(false);
       }, 500); // 500ms de delay mínimo entre escaneos
     }
-  }, [cartMode, currentUser, addToCart, setCartError]);
+  }, [cartMode, currentUser, addToCart, setCartError, isProcessing, lastProcessedCode, lastProcessedTime]); // ✅ DEPENDENCIAS COMPLETAS
 
   // ┌─────────────────────────────────────────────────────────────
   // │ MANEJAR ERRORES DEL ESCÁNER
@@ -810,7 +811,9 @@ const PlateWithdrawal = ({ onNavigate }) => {
 
 export default PlateWithdrawal;
 
-console.log('📦 PlateWithdrawal CORREGIDO v2.0 cargado');
+console.log('📦 PlateWithdrawal CORREGIDO v2.1 - SIN WARNINGS ESLint');
+console.log('✅ Removidas variables no usadas: cartItems, error en línea 51');
+console.log('✅ Agregadas dependencias faltantes en useCallback');
 console.log('🔒 Protecciones activas: Anti-spam, Lock temporal, Delay mínimo');
 console.log('🛒 Modos disponibles: Búsqueda individual + Carrito múltiple');
-console.log('✅ Listo para uso en producción');
+console.log('✅ Listo para deploy en Netlify sin warnings');
