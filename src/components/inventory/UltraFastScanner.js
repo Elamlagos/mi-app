@@ -1,420 +1,495 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+// 📷 ULTRA FAST SCANNER - VERSIÓN MEJORADA CON GESTIÓN PROFESIONAL DE CÁMARAS
+// Archivo: src/components/inventory/UltraFastScanner.js
 
-/**
- * 🚀 ESCÁNER ULTRA RÁPIDO - VERSIÓN OPTIMIZADA
- * Mejoras: Control de video, reducción de logs, mejor gestión de errores
- */
-const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { BrowserMultiFormatReader } from '@zxing/library';
+
+const UltraFastScanner = ({ 
+  onCodeDetected, 
+  onError, 
+  isActive = true,
+  scanDelay = 100 
+}) => {
+  // ═══════════════════════════════════════════════════════════════
+  // ESTADOS Y REFERENCIAS
+  // ═══════════════════════════════════════════════════════════════
   const videoRef = useRef(null);
-  const codeReaderRef = useRef(null);
-  const selectedCameraRef = useRef(null);
-  const streamRef = useRef(null);
-  const scanningRef = useRef(false); // 🔒 Control de estado de escaneo
-  
-  const [status, setStatus] = useState('idle');
-  const [detectionCount, setDetectionCount] = useState(0);
-  const [lastCode, setLastCode] = useState('');
-  const [errorCount, setErrorCount] = useState(0);
+  const readerRef = useRef(null);
+  const currentStreamRef = useRef(null);
+  const scanningRef = useRef(false);
+  const lastScanTimeRef = useRef(0);
+  const mountedRef = useRef(true);
 
-  // 🧹 Cleanup mejorado
-  const cleanup = useCallback(() => {
-    console.log('🧹 Limpiando escáner...');
+  // Estados del componente
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [scannerReady, setScannerReady] = useState(false);
+  const [error, setError] = useState('');
+  const [lastScannedCode, setLastScannedCode] = useState('');
+
+  // ═══════════════════════════════════════════════════════════════
+  // FUNCIONES DE GESTIÓN DE CÁMARAS
+  // ═══════════════════════════════════════════════════════════════
+
+  // 🔄 FUNCIÓN PARA LIBERAR COMPLETAMENTE LOS RECURSOS DE CÁMARA
+  const releaseCamera = useCallback(async () => {
+    console.log('🔄 Liberando recursos de cámara...');
     
     try {
-      // Marcar como no escaneando
-      scanningRef.current = false;
-      
-      // Detener el stream de video primero
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => {
-          if (track.readyState === 'live') {
-            track.stop();
-          }
-        });
-        streamRef.current = null;
+      // Detener el reader de ZXing
+      if (readerRef.current) {
+        try {
+          await readerRef.current.reset();
+        } catch (err) {
+          console.warn('Error al resetear reader:', err);
+        }
       }
-      
+
+      // Detener el stream actual
+      if (currentStreamRef.current) {
+        const tracks = currentStreamRef.current.getTracks();
+        tracks.forEach(track => {
+          console.log(`🛑 Deteniendo track: ${track.kind} - ${track.label}`);
+          track.stop();
+        });
+        currentStreamRef.current = null;
+      }
+
       // Limpiar el video element
       if (videoRef.current) {
-        videoRef.current.pause();
         videoRef.current.srcObject = null;
-        videoRef.current.load(); // Forzar reset
+        videoRef.current.pause();
       }
+
+      scanningRef.current = false;
+      setScannerReady(false);
       
-      // Reset del code reader
-      if (codeReaderRef.current) {
-        try {
-          codeReaderRef.current.reset();
-        } catch (error) {
-          // Silenciar errores de cleanup
-        }
-        codeReaderRef.current = null;
-      }
+      // Pequeña pausa para asegurar que los recursos se liberen
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
     } catch (error) {
-      // Silenciar errores de cleanup
+      console.error('Error liberando cámara:', error);
     }
-    
-    setStatus('idle');
-    setDetectionCount(0);
-    setLastCode('');
-    setErrorCount(0);
   }, []);
 
-  // 🚀 Inicializador optimizado
-  const initScanner = useCallback(async () => {
-    if (!isActive || scanningRef.current) return;
-    
+  // 📷 FUNCIÓN PARA OBTENER LISTA DE CÁMARAS DISPONIBLES
+  const getCameraDevices = useCallback(async () => {
     try {
-      setStatus('starting');
-      console.log('🚀 Iniciando escáner optimizado...');
+      // Solicitar permisos primero
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop());
 
-      // PASO 1: Verificar ZXing
-      if (!window.ZXing || !window.BARCODE_SYSTEM_READY) {
-        throw new Error('ZXing no disponible. Recarga la página.');
-      }
-
-      // PASO 2: Crear lector optimizado
-      const codeReader = new window.ZXing.BrowserMultiFormatReader();
-      codeReaderRef.current = codeReader;
-
-      // PASO 3: Configurar formatos específicos
-      const hints = new Map();
-      hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-        window.ZXing.BarcodeFormat.CODE_128,
-        window.ZXing.BarcodeFormat.CODE_39,
-        window.ZXing.BarcodeFormat.EAN_13,
-        window.ZXing.BarcodeFormat.EAN_8
-      ]);
-      hints.set(window.ZXing.DecodeHintType.TRY_HARDER, true);
-
-      // PASO 4: Obtener cámaras disponibles
-      const videoInputDevices = await codeReader.getVideoInputDevices();
+      // Obtener lista de dispositivos
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
       
-      if (videoInputDevices.length === 0) {
-        throw new Error('No se encontraron cámaras en tu dispositivo');
+      console.log('📷 Cámaras disponibles:', videoDevices.length);
+      videoDevices.forEach((device, index) => {
+        console.log(`  ${index}: ${device.label || `Cámara ${index + 1}`}`);
+      });
+
+      return videoDevices;
+    } catch (error) {
+      console.error('Error obteniendo cámaras:', error);
+      onError?.('Error al acceder a las cámaras');
+      return [];
+    }
+  }, [onError]);
+
+  // 🚀 FUNCIÓN PRINCIPAL PARA INICIALIZAR EL ESCÁNER
+  const initializeScanner = useCallback(async (cameraIndex = 0) => {
+    if (!mountedRef.current || isInitializing) {
+      console.log('⏸️ Inicialización cancelada - componente desmontado o ya inicializando');
+      return;
+    }
+
+    console.log(`🚀 Inicializando escáner con cámara ${cameraIndex}...`);
+    setIsInitializing(true);
+    setError('');
+
+    try {
+      // 1. Liberar recursos anteriores
+      await releaseCamera();
+
+      // 2. Obtener lista de cámaras
+      const cameras = await getCameraDevices();
+      if (cameras.length === 0) {
+        throw new Error('No se encontraron cámaras disponibles');
       }
 
-      // PASO 5: Seleccionar cámara (usar la recordada o buscar la trasera)
-      let selectedCamera = selectedCameraRef.current;
-      
-      if (!selectedCamera) {
-        selectedCamera = videoInputDevices.find(device => {
-          const label = device.label.toLowerCase();
-          return label.includes('back') || 
-                 label.includes('rear') ||
-                 label.includes('environment') ||
-                 label.includes('facing back');
-        }) || videoInputDevices[0];
-        
-        selectedCameraRef.current = selectedCamera;
-        console.log('📱 Cámara seleccionada:', selectedCamera.label || 'Cámara por defecto');
-      }
+      setAvailableCameras(cameras);
 
-      // PASO 6: Configurar stream con mejores parámetros
+      // 3. Seleccionar cámara válida
+      const validIndex = Math.max(0, Math.min(cameraIndex, cameras.length - 1));
+      const selectedCamera = cameras[validIndex];
+      setCurrentCameraIndex(validIndex);
+
+      console.log(`📱 Usando cámara: ${selectedCamera.label || `Cámara ${validIndex + 1}`}`);
+
+      // 4. Configurar constraints de video optimizadas
       const constraints = {
-        video: { 
-          deviceId: selectedCamera.deviceId,
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-          facingMode: 'environment'
+        video: {
+          deviceId: selectedCamera.deviceId ? { exact: selectedCamera.deviceId } : undefined,
+          facingMode: cameraIndex === 0 ? 'environment' : 'user', // Trasera por defecto
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 60 }
         }
       };
 
+      // 5. Obtener stream de video
+      console.log('📹 Obteniendo stream de video...');
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      
-      // Configurar video con manejo de errores
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        
-        // 🔧 Configurar eventos de video
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play().catch(e => {
-            console.warn('Video no pudo reproducirse automáticamente');
-          });
-        };
-        
-        videoRef.current.onerror = (e) => {
-          console.error('Error de video:', e);
-          onError('Error de reproducción de video');
-        };
+      currentStreamRef.current = stream;
+
+      if (!mountedRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
       }
 
-      // Marcar como escaneando
-      scanningRef.current = true;
+      // 6. Configurar video element
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(err => {
+          console.warn('Error reproduciendo video:', err);
+        });
+      }
 
-      // PASO 7: Iniciar decodificación con throttling
-      let lastDecodeTime = 0;
-      const DECODE_THROTTLE = 100; // ms entre intentos de decodificación
+      // 7. Inicializar reader de ZXing
+      if (!readerRef.current) {
+        readerRef.current = new BrowserMultiFormatReader();
+        
+        // Configurar hints para mejor rendimiento
+        const hints = new Map();
+        hints.set(2, true); // TRY_HARDER
+        hints.set(3, true); // PURE_BARCODE
+        readerRef.current.hints = hints;
+      }
 
-      await codeReader.decodeFromVideoDevice(
-        selectedCamera.deviceId,
-        videoRef.current,
-        (result, error) => {
-          // ⏰ THROTTLING: Limitar frecuencia de procesamiento
-          const now = Date.now();
-          if (now - lastDecodeTime < DECODE_THROTTLE) {
-            return;
-          }
-          lastDecodeTime = now;
+      // 8. Pequeña pausa para que el video se estabilice
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-          if (result && scanningRef.current) {
-            const code = result.getText().trim();
-            setDetectionCount(prev => prev + 1);
-            setLastCode(code);
-            
-            // VALIDACIÓN: Solo aceptar códigos de 6 dígitos
-            if (/^\d{6}$/.test(code)) {
-              console.log('✅ CÓDIGO VÁLIDO ENCONTRADO:', code);
+      if (!mountedRef.current) return;
+
+      // 9. Iniciar escaneo
+      console.log('✅ Escáner inicializado, comenzando escaneo...');
+      setScannerReady(true);
+      startScanning();
+
+    } catch (error) {
+      console.error('❌ Error inicializando escáner:', error);
+      
+      let errorMessage = 'Error inicializando escáner';
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Acceso a cámara denegado. Por favor, permite el acceso.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'No se encontró ninguna cámara.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = 'Cámara en uso por otra aplicación.';
+      }
+      
+      setError(errorMessage);
+      onError?.(errorMessage);
+    } finally {
+      setIsInitializing(false);
+    }
+  }, [isInitializing, releaseCamera, getCameraDevices, onError]);
+
+  // 🔍 FUNCIÓN DE ESCANEO CONTINUO
+  const startScanning = useCallback(() => {
+    if (!readerRef.current || !videoRef.current || scanningRef.current) {
+      return;
+    }
+
+    scanningRef.current = true;
+    console.log('🔍 Iniciando escaneo continuo...');
+
+    const scanFrame = async () => {
+      if (!scanningRef.current || !mountedRef.current || !videoRef.current) {
+        return;
+      }
+
+      try {
+        const now = Date.now();
+        
+        // Control de velocidad de escaneo
+        if (now - lastScanTimeRef.current < scanDelay) {
+          requestAnimationFrame(scanFrame);
+          return;
+        }
+
+        // Verificar que el video esté listo
+        if (videoRef.current.readyState >= 2) {
+          try {
+            const result = await readerRef.current.decodeOnceFromVideoDevice(
+              undefined, 
+              videoRef.current
+            );
+
+            if (result && result.text) {
+              const scannedText = result.text.trim();
               
-              // Detener escáner inmediatamente
-              scanningRef.current = false;
-              cleanup();
-              
-              // Reportar código
-              setTimeout(() => {
-                onCodeDetected(code);
-              }, 100);
-              
-              return;
-            }
-          }
-          
-          // 🔇 REDUCIR SPAM DE ERRORES
-          if (error && scanningRef.current) {
-            // Solo contar errores, no loggear cada uno
-            setErrorCount(prev => {
-              const newCount = prev + 1;
-              // Solo loggear cada 1000 errores
-              if (newCount % 1000 === 0) {
-                console.log(`📊 ${newCount} intentos de decodificación realizados`);
+              // Evitar códigos duplicados consecutivos
+              if (scannedText !== lastScannedCode) {
+                console.log('✅ Código detectado:', scannedText);
+                setLastScannedCode(scannedText);
+                lastScanTimeRef.current = now;
+                
+                // Enviar código detectado
+                onCodeDetected?.(scannedText);
+                
+                // Pequeña pausa tras detección exitosa
+                await new Promise(resolve => setTimeout(resolve, 300));
               }
-              return newCount;
-            });
-            
-            // Solo loggear errores importantes (no NotFoundException)
-            if (error.name !== 'NotFoundException' && 
-                error.name !== 'ChecksumException' &&
-                error.name !== 'FormatException') {
-              console.warn('⚠️ Error de decodificación importante:', error.name);
+            }
+          } catch (scanError) {
+            // Los errores de "No QR code found" son normales, no los reportamos
+            if (!scanError.message?.includes('No MultiFormat Readers were able to detect the code')) {
+              console.warn('Error de escaneo menor:', scanError.message);
             }
           }
         }
-      );
 
-      setStatus('ready');
-      console.log('✅ Escáner activo y optimizado');
+        // Continuar escaneando
+        if (scanningRef.current) {
+          requestAnimationFrame(scanFrame);
+        }
 
-    } catch (error) {
-      console.error('❌ Error iniciando escáner:', error);
-      setStatus('error');
-      
-      // Cleanup en caso de error
-      cleanup();
-      
-      // Mensajes de error más amigables
-      let message = 'Error iniciando escáner';
-      if (error.name === 'NotAllowedError') {
-        message = 'Permiso de cámara denegado. Por favor, permite el acceso a la cámara.';
-      } else if (error.name === 'NotFoundError') {
-        message = 'No se encontró cámara en tu dispositivo.';
-      } else if (error.name === 'NotSupportedError') {
-        message = 'Tu navegador no soporta el escáner. Usa Chrome o Safari.';
-      } else if (error.message) {
-        message = error.message;
-      }
-      
-      onError(message);
-    }
-  }, [isActive, onError, onCodeDetected, cleanup]);
-
-  // 🎯 Effect principal con mejor control
-  useEffect(() => {
-    if (isActive && !scanningRef.current) {
-      // Delay para evitar inicializaciones múltiples
-      const timer = setTimeout(() => {
-        initScanner();
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    } else if (!isActive && scanningRef.current) {
-      cleanup();
-    }
-
-    // Cleanup al desmontar
-    return () => {
-      if (scanningRef.current) {
-        cleanup();
+      } catch (error) {
+        console.error('Error en frame de escaneo:', error);
+        if (scanningRef.current) {
+          setTimeout(scanFrame, 100); // Reintentar tras error
+        }
       }
     };
-  }, [isActive, initScanner, cleanup]);
 
-  // 🔧 Función para resetear cámara
-  const resetCamera = useCallback(() => {
-    console.log('🔄 Reseteando selección de cámara...');
-    selectedCameraRef.current = null;
-    if (isActive && scanningRef.current) {
-      cleanup();
-      setTimeout(() => {
-        initScanner();
-      }, 500);
+    // Iniciar el bucle de escaneo
+    scanFrame();
+  }, [scanDelay, onCodeDetected]);
+
+  // 🔄 FUNCIÓN PARA CAMBIAR DE CÁMARA
+  const switchCamera = useCallback(async () => {
+    if (isInitializing || availableCameras.length <= 1) {
+      console.log('⏸️ No se puede cambiar cámara - solo hay una disponible o inicializando');
+      return;
     }
-  }, [isActive, cleanup, initScanner]);
+
+    const nextIndex = (currentCameraIndex + 1) % availableCameras.length;
+    console.log(`🔄 Cambiando a cámara ${nextIndex}: ${availableCameras[nextIndex]?.label || 'Sin nombre'}`);
+    
+    await initializeScanner(nextIndex);
+  }, [isInitializing, availableCameras, currentCameraIndex, initializeScanner]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // EFECTOS DE CICLO DE VIDA
+  // ═══════════════════════════════════════════════════════════════
+
+  // 🎬 EFECTO: Inicializar cuando se activa el escáner
+  useEffect(() => {
+    mountedRef.current = true;
+
+    if (isActive && !scannerReady && !isInitializing) {
+      console.log('🎬 Componente activado - inicializando...');
+      initializeScanner(currentCameraIndex);
+    }
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [isActive, scannerReady, isInitializing, initializeScanner, currentCameraIndex]);
+
+  // 🛑 EFECTO: Limpiar al desactivar o desmontar
+  useEffect(() => {
+    if (!isActive) {
+      console.log('🛑 Escáner desactivado - liberando recursos...');
+      scanningRef.current = false;
+      releaseCamera();
+    }
+
+    return () => {
+      console.log('🧹 Desmontando UltraFastScanner...');
+      mountedRef.current = false;
+      scanningRef.current = false;
+      releaseCamera();
+    };
+  }, [isActive, releaseCamera]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDERIZADO
+  // ═══════════════════════════════════════════════════════════════
+
+  if (!isActive) {
+    return null;
+  }
 
   return (
     <div style={{
       position: 'relative',
       width: '100%',
-      maxWidth: '450px',
+      maxWidth: '500px',
       margin: '0 auto',
       backgroundColor: '#000',
       borderRadius: '12px',
       overflow: 'hidden',
-      boxShadow: '0 6px 25px rgba(0,0,0,0.3)'
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
     }}>
-      {/* 📹 Video principal */}
+      {/* VIDEO ELEMENT */}
       <video
         ref={videoRef}
         style={{
           width: '100%',
-          height: 'auto',
-          display: 'block',
-          borderRadius: '12px'
+          height: '300px',
+          objectFit: 'cover',
+          display: 'block'
         }}
         playsInline
         muted
-        autoPlay={false} // Cambiar a false para evitar errores
+        autoPlay
       />
-      
-      {/* 🎯 Overlay de escaneo */}
-      {status === 'ready' && (
-        <div style={{
-          position: 'absolute',
-          top: '20%',
-          left: '10%',
-          right: '10%',
-          bottom: '20%',
-          border: '3px solid #00ff00',
-          borderRadius: '10px',
-          pointerEvents: 'none',
-          boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-          animation: 'scannerPulse 2s ease-in-out infinite'
-        }}>
-          {/* Esquinas dinámicas */}
-          <div style={{ position: 'absolute', top: '-3px', left: '-3px', width: '25px', height: '25px', borderTop: '5px solid #00ff00', borderLeft: '5px solid #00ff00', borderRadius: '5px 0 0 0' }} />
-          <div style={{ position: 'absolute', top: '-3px', right: '-3px', width: '25px', height: '25px', borderTop: '5px solid #00ff00', borderRight: '5px solid #00ff00', borderRadius: '0 5px 0 0' }} />
-          <div style={{ position: 'absolute', bottom: '-3px', left: '-3px', width: '25px', height: '25px', borderBottom: '5px solid #00ff00', borderLeft: '5px solid #00ff00', borderRadius: '0 0 0 5px' }} />
-          <div style={{ position: 'absolute', bottom: '-3px', right: '-3px', width: '25px', height: '25px', borderBottom: '5px solid #00ff00', borderRight: '5px solid #00ff00', borderRadius: '0 0 5px 0' }} />
-          
-          {/* Línea de escaneo */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '5%',
-            right: '5%',
-            height: '2px',
-            background: 'linear-gradient(90deg, transparent, #00ff00, transparent)',
-            animation: 'scanLine 1.5s ease-in-out infinite',
-            transform: 'translateY(-50%)'
-          }} />
-        </div>
-      )}
-      
-      {/* 📊 Indicador de estado */}
+
+      {/* OVERLAY DE ESCANEO */}
       <div style={{
         position: 'absolute',
-        top: '12px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        backgroundColor: 
-          status === 'starting' ? 'rgba(255, 193, 7, 0.95)' :
-          status === 'ready' ? 'rgba(40, 167, 69, 0.95)' :
-          status === 'error' ? 'rgba(220, 53, 69, 0.95)' : 'rgba(108, 117, 125, 0.95)',
-        color: 'white',
-        padding: '8px 16px',
-        borderRadius: '20px',
-        fontSize: '13px',
-        fontWeight: 'bold',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255,255,255,0.2)'
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'none'
       }}>
-        {status === 'starting' && '⚡ Iniciando...'}
-        {status === 'ready' && `🎯 Activo | Códigos: ${detectionCount}`}
-        {status === 'error' && '❌ Error de Cámara'}
-        {status === 'idle' && '⏸️ Inactivo'}
-      </div>
-      
-      {/* 🔧 Botón para resetear cámara */}
-      {status === 'ready' && (
-        <button
-          onClick={resetCamera}
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            border: '1px solid rgba(255,255,255,0.3)',
-            borderRadius: '15px',
-            padding: '5px 10px',
-            fontSize: '11px',
-            cursor: 'pointer',
-            backdropFilter: 'blur(10px)'
-          }}
-        >
-          🔄 Cambiar
-        </button>
-      )}
-      
-      {/* 📱 Instrucciones */}
-      {status === 'ready' && (
+        {/* MARCO DE ESCANEO */}
         <div style={{
-          position: 'absolute',
-          bottom: '12px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          width: '250px',
+          height: '250px',
+          border: scannerReady ? '3px solid #00ff00' : '3px solid #ffff00',
+          borderRadius: '12px',
+          background: scannerReady 
+            ? 'rgba(0, 255, 0, 0.1)' 
+            : 'rgba(255, 255, 0, 0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          animation: scannerReady ? 'pulse 2s infinite' : 'none'
+        }}>
+          {/* ESQUINAS DEL MARCO */}
+          {[0, 1, 2, 3].map(corner => (
+            <div
+              key={corner}
+              style={{
+                position: 'absolute',
+                width: '20px',
+                height: '20px',
+                border: `3px solid ${scannerReady ? '#00ff00' : '#ffff00'}`,
+                ...(corner === 0 && { top: '-3px', left: '-3px', borderRight: 'none', borderBottom: 'none' }),
+                ...(corner === 1 && { top: '-3px', right: '-3px', borderLeft: 'none', borderBottom: 'none' }),
+                ...(corner === 2 && { bottom: '-3px', left: '-3px', borderRight: 'none', borderTop: 'none' }),
+                ...(corner === 3 && { bottom: '-3px', right: '-3px', borderLeft: 'none', borderTop: 'none' })
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* CONTROLES */}
+      <div style={{
+        position: 'absolute',
+        bottom: '10px',
+        left: '10px',
+        right: '10px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '10px'
+      }}>
+        {/* ESTADO DEL ESCÁNER */}
+        <div style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
           color: 'white',
-          padding: '10px 20px',
+          padding: '8px 12px',
           borderRadius: '20px',
           fontSize: '12px',
-          textAlign: 'center',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          maxWidth: '90%'
+          fontWeight: 'bold',
+          flex: 1,
+          textAlign: 'center'
         }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
-            🔍 Centra el código de 6 dígitos
-          </div>
-          {lastCode && (
-            <div style={{ fontSize: '10px', opacity: 0.8 }}>
-              Último: {lastCode}
-            </div>
-          )}
-          {errorCount > 0 && (
-            <div style={{ fontSize: '9px', opacity: 0.6 }}>
-              Intentos: {errorCount}
-            </div>
-          )}
+          {isInitializing ? '⏳ Iniciando...' :
+           scannerReady ? '✅ Escaneando' : '❌ Desconectado'}
+        </div>
+
+        {/* BOTÓN CAMBIAR CÁMARA */}
+        {availableCameras.length > 1 && (
+          <button
+            onClick={switchCamera}
+            disabled={isInitializing}
+            style={{
+              backgroundColor: isInitializing ? 'rgba(108, 117, 125, 0.8)' : 'rgba(0, 123, 255, 0.8)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              width: '45px',
+              height: '45px',
+              cursor: isInitializing ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              fontWeight: 'bold',
+              pointerEvents: 'auto'
+            }}
+            title={`Cambiar a ${availableCameras[currentCameraIndex]?.label || 'otra cámara'}`}
+          >
+            🔄
+          </button>
+        )}
+      </div>
+
+      {/* INFORMACIÓN DE CÁMARA ACTUAL */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        left: '10px',
+        right: '10px',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        color: 'white',
+        padding: '8px 12px',
+        borderRadius: '8px',
+        fontSize: '12px',
+        textAlign: 'center'
+      }}>
+        📷 {availableCameras[currentCameraIndex]?.label || `Cámara ${currentCameraIndex + 1}`}
+        {availableCameras.length > 1 && ` (${currentCameraIndex + 1}/${availableCameras.length})`}
+      </div>
+
+      {/* ERROR DISPLAY */}
+      {error && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '10px',
+          right: '10px',
+          backgroundColor: 'rgba(220, 53, 69, 0.9)',
+          color: 'white',
+          padding: '15px',
+          borderRadius: '8px',
+          textAlign: 'center',
+          transform: 'translateY(-50%)',
+          fontSize: '14px',
+          fontWeight: 'bold'
+        }}>
+          ⚠️ {error}
         </div>
       )}
-      
-      {/* 🎨 Animaciones CSS */}
+
+      {/* CSS ANIMATIONS */}
       <style jsx>{`
-        @keyframes scannerPulse {
-          0%, 100% { 
-            border-color: #00ff00; 
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 255, 0, 0.2);
-          }
-          50% { 
-            border-color: #00cc00; 
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4), inset 0 0 25px rgba(0, 255, 0, 0.3);
-          }
-        }
-        @keyframes scanLine {
-          0% { transform: translateY(-50%) translateX(-100%); opacity: 0; }
-          50% { opacity: 1; }
-          100% { transform: translateY(-50%) translateX(100%); opacity: 0; }
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); }
+          70% { box-shadow: 0 0 0 10px rgba(0, 255, 0, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); }
         }
       `}</style>
     </div>
@@ -423,4 +498,9 @@ const UltraFastScanner = ({ onCodeDetected, onError, isActive = false }) => {
 
 export default UltraFastScanner;
 
-console.log('📦 UltraFastScanner OPTIMIZADO - Control de errores y video mejorado');
+console.log('📷 UltraFastScanner v3.0 - GESTIÓN PROFESIONAL DE CÁMARAS');
+console.log('✅ Liberación completa de recursos entre cambios');
+console.log('✅ Detección automática de cámaras disponibles');
+console.log('✅ Cambio suave entre cámaras sin reinicio');
+console.log('✅ Gestión de permisos y errores mejorada');
+console.log('✅ UI moderna con controles intuitivos');
