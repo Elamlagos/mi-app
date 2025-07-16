@@ -1,0 +1,422 @@
+/* ===================================================================
+   🤍 REGISTERUSERFORM.CSS - DISEÑO LIMPIO Y FUNCIONAL
+   Mobile-first | Fondo blanco | Sin sobreposiciones
+   =================================================================== */
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🎨 VARIABLES SIMPLES Y CLARAS
+   └───────────────────────────────────────────────────────────── */
+:root {
+  /* Colores base */
+  --white: #ffffff;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  
+  /* Azul del logo */
+  --blue-primary: #2b5f8a;
+  --blue-light: #4a90b8;
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  
+  /* Estados */
+  --success: #10b981;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  
+  /* Espaciado mobile-first */
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  
+  /* Bordes */
+  --radius: 8px;
+  --radius-lg: 12px;
+  
+  /* Sombras */
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 RESET Y BASE MOBILE-FIRST
+   └───────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+.register-user-form {
+  width: 100%;
+  min-height: 100vh;
+  padding: var(--space-4);
+  background-color: var(--white);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--gray-800);
+  line-height: 1.6;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🔙 HEADER
+   └───────────────────────────────────────────────────────────── */
+.register-form-header {
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+
+.register-form-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-6);
+  background-color: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  color: var(--gray-600);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow);
+}
+
+.register-form-back-button:hover {
+  background-color: var(--gray-50);
+  border-color: var(--blue-primary);
+  color: var(--blue-primary);
+}
+
+.register-form-title {
+  font-size: clamp(24px, 5vw, 32px);
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0;
+  position: relative;
+  padding-bottom: var(--space-4);
+}
+
+.register-form-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background-color: var(--blue-primary);
+  border-radius: 2px;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📢 ALERTAS
+   └───────────────────────────────────────────────────────────── */
+.register-form-errors {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-lg);
+  color: var(--error);
+  font-size: 14px;
+}
+
+.register-form-errors ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.register-form-errors li {
+  margin-bottom: var(--space-2);
+}
+
+.register-form-success {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-lg);
+  color: var(--success);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📝 FORMULARIO
+   └───────────────────────────────────────────────────────────── */
+.register-form {
+  background-color: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin: var(--space-4) 0;
+  box-shadow: var(--shadow-md);
+  border-top: 4px solid var(--blue-primary);
+}
+
+.register-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📝 CAMPOS
+   └───────────────────────────────────────────────────────────── */
+.register-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.register-form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.register-form-required {
+  color: var(--error);
+}
+
+.register-form-input,
+.register-form-select {
+  width: 100%;
+  height: 48px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 16px;
+  color: var(--gray-800);
+  background-color: var(--white);
+  transition: all 0.2s ease;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.register-form-input:focus,
+.register-form-select:focus {
+  outline: none;
+  border-color: var(--blue-primary);
+  box-shadow: 0 0 0 3px rgb(43 95 138 / 0.1);
+}
+
+.register-form-input::placeholder {
+  color: var(--gray-400);
+}
+
+.register-form-input:hover:not(:focus) {
+  border-color: var(--gray-400);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📎 ARCHIVO
+   └───────────────────────────────────────────────────────────── */
+.register-form-file-field {
+  grid-column: 1 / -1;
+}
+
+.register-form-file-input {
+  width: 100%;
+  min-height: 72px;
+  padding: var(--space-5);
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius-lg);
+  background-color: var(--gray-50);
+  color: var(--gray-600);
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.register-form-file-input:hover {
+  border-color: var(--blue-primary);
+  background-color: var(--blue-50);
+  color: var(--blue-primary);
+}
+
+.register-form-file-selected {
+  font-size: 12px;
+  color: var(--success);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius);
+  display: inline-block;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 💡 AYUDA
+   └───────────────────────────────────────────────────────────── */
+.register-form-help {
+  background-color: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+  border-left: 4px solid var(--blue-primary);
+}
+
+.register-form-help-text {
+  font-size: 14px;
+  color: var(--gray-600);
+  margin: 0 0 var(--space-4) 0;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🚀 BOTÓN
+   └───────────────────────────────────────────────────────────── */
+.register-form-submit {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: var(--radius-lg);
+  background-color: var(--blue-primary);
+  color: var(--white);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow);
+}
+
+.register-form-submit:hover:not(:disabled) {
+  background-color: var(--blue-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.register-form-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.register-form-submit:disabled {
+  background-color: var(--gray-300);
+  color: var(--gray-500);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ ❌ ERROR GLOBAL
+   └───────────────────────────────────────────────────────────── */
+.register-form-global-error {
+  color: var(--error);
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  font-size: 14px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 RESPONSIVE
+   └───────────────────────────────────────────────────────────── */
+
+/* Tablet */
+@media (min-width: 640px) {
+  .register-user-form {
+    padding: var(--space-6);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .register-form-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+  }
+  
+  .register-form-file-field {
+    grid-column: 1 / -1;
+  }
+  
+  .register-form {
+    padding: var(--space-8);
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .register-user-form {
+    max-width: 800px;
+    padding: var(--space-8);
+  }
+  
+  .register-form {
+    padding: var(--space-8) calc(var(--space-8) * 1.5);
+  }
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ ✨ ANIMACIONES SIMPLES
+   └───────────────────────────────────────────────────────────── */
+.register-user-form {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🔍 ACCESIBILIDAD
+   └───────────────────────────────────────────────────────────── */
+.register-form-back-button:focus-visible,
+.register-form-input:focus-visible,
+.register-form-select:focus-visible,
+.register-form-file-input:focus-visible,
+.register-form-submit:focus-visible {
+  outline: 2px solid var(--blue-primary);
+  outline-offset: 2px;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 OPTIMIZACIÓN MOBILE
+   └───────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .register-user-form {
+    padding: var(--space-3);
+  }
+  
+  .register-form {
+    padding: var(--space-4);
+    margin: var(--space-3) 0;
+  }
+  
+  .register-form-grid {
+    gap: var(--space-4);
+  }
+}

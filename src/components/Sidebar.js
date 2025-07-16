@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import './Sidebar.css'; // 🎨 Importar estilos específicos
 
 const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false); // Mobile-first: cerrado por defecto
+  const [isCollapsed, setIsCollapsed] = useState(false); // Desktop: estado colapsado
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,8 +39,38 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
   };
 
   const toggleSidebar = () => {
-    setIsOpen(!isOpen);
+    if (window.innerWidth >= 1024) {
+      // Desktop: toggle colapso
+      setIsCollapsed(!isCollapsed);
+    } else {
+      // Mobile/Tablet: toggle visibilidad
+      setIsOpen(!isOpen);
+    }
   };
+
+  const closeSidebar = () => {
+    setIsOpen(false);
+  };
+
+  const handleNavigation = (page) => {
+    onNavigate(page);
+    // Cerrar sidebar en mobile después de navegar
+    if (window.innerWidth < 1024) {
+      closeSidebar();
+    }
+  };
+
+  // Manejar resize de ventana
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsOpen(false); // Cerrar drawer mobile
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Función para determinar qué secciones puede ver el usuario
   const getVisibleSections = () => {
@@ -61,280 +93,219 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        height: '100vh' 
+        height: '100vh',
+        background: '#fafafa'
       }}>
-        Cargando permisos...
+        <div style={{ 
+          padding: '20px',
+          background: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+          color: '#374151'
+        }}>
+          ⏳ Cargando permisos...
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div style={{ 
-        width: isOpen ? '250px' : '60px', 
-        height: '100vh', 
-        position: 'fixed', 
-        left: 0, 
-        top: 0,
-        backgroundColor: '#f8f9fa',
-        borderRight: '1px solid #ddd',
-        transition: 'width 0.3s',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+    <>
+      {/* 📱 MOBILE NAV BAR */}
+      <div className="mobile-nav-bar">
+        <button 
+          onClick={toggleSidebar}
+          className="mobile-menu-button"
+          aria-label="Abrir menú"
+        >
+          ☰
+        </button>
+        <h1 className="mobile-page-title">{currentPage}</h1>
+      </div>
+
+      {/* 🌫️ OVERLAY PARA MOBILE */}
+      <div 
+        className={`sidebar-overlay ${isOpen ? 'active' : ''}`}
+        onClick={closeSidebar}
+        aria-hidden="true"
+      />
+
+      {/* 🎯 SIDEBAR PRINCIPAL */}
+      <aside className={`sidebar-container ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         
-        <div style={{ 
-          padding: '20px',
-          borderBottom: '1px solid #ddd',
-          flexShrink: 0
-        }}>
-          <button onClick={toggleSidebar} style={{ marginBottom: '15px' }}>
-            {isOpen ? '←' : '→'}
+        {/* 👤 HEADER CON INFO DE USUARIO */}
+        <div className="sidebar-header">
+          <button 
+            onClick={toggleSidebar}
+            className="sidebar-toggle"
+            aria-label={isCollapsed ? 'Expandir menú' : 'Colapsar menú'}
+          >
+            {window.innerWidth >= 1024 ? (isCollapsed ? '→' : '←') : (isOpen ? '✕' : '☰')}
           </button>
-          {isOpen && (
-            <div>
-              <h3>{currentPage}</h3>
+          
+          {/* Solo mostrar en mobile o desktop expandido */}
+          {(isOpen || (window.innerWidth >= 1024 && !isCollapsed)) && (
+            <>
+              <h2 className="sidebar-page-title">{currentPage}</h2>
+              
               {userProfile && (
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                  <div>
-                    <strong>{userProfile.nombre} {userProfile.apellidos}</strong>
+                <div className="sidebar-user-info">
+                  <div className="sidebar-user-name">
+                    {userProfile.nombre} {userProfile.apellidos}
                   </div>
-                  <div style={{ 
-                    backgroundColor: userProfile.rol === 'administrador' ? '#dc3545' : '#28a745',
-                    color: 'white',
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    display: 'inline-block',
-                    marginTop: '3px',
-                    fontSize: '10px'
-                  }}>
-                    {userProfile.rol.toUpperCase()}
+                  
+                  <div className={`sidebar-user-role ${userProfile.rol === 'administrador' ? 'admin' : 'instructor'}`}>
+                    {userProfile.rol === 'administrador' ? '🔑 Admin' : '👨‍🏫 Instructor'}
                   </div>
+                  
                   {userProfile.comite && (
-                    <div style={{ marginTop: '2px' }}>
-                      Comité: {userProfile.comite}
+                    <div className="sidebar-user-committee">
+                      📋 Comité: {userProfile.comite}
                     </div>
                   )}
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
 
-        <div style={{ 
-          flex: 1, 
-          padding: '20px',
-          overflowY: 'auto'
-        }}>
-          {isOpen && (
-            <nav>
-              {/* Sección Retiros - Visible para todos */}
-              {visibleSections.retiros && (
-                <div style={{ marginBottom: '25px' }}>
-                  <h4 style={{ 
-                    color: '#333',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    marginBottom: '10px',
-                    paddingLeft: '5px'
-                  }}>
-                    Retiros
-                  </h4>
-                  <ul style={{ listStyle: 'none', padding: 0, marginLeft: '10px' }}>
-                    <li style={{ marginBottom: '8px' }}>
-                      <button 
-                        onClick={() => onNavigate('retiro-placas')}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#007bff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          textAlign: 'left',
-                          padding: '5px 0',
-                          width: '100%'
-                        }}
-                      >
-                        Retiro de Placas
-                      </button>
-                    </li>
-                    <li style={{ marginBottom: '8px' }}>
-                      <button 
-                        onClick={() => onNavigate('retiro-lentes')}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#007bff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          textAlign: 'left',
-                          padding: '5px 0',
-                          width: '100%'
-                        }}
-                      >
-                        Retiro de Lentes
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              )}
+        {/* 🧭 NAVEGACIÓN PRINCIPAL */}
+        {(isOpen || (window.innerWidth >= 1024)) && (
+          <nav className="sidebar-nav">
+            
+            {/* 📤 SECCIÓN RETIROS */}
+            {visibleSections.retiros && (
+              <div className="sidebar-nav-section">
+                {!isCollapsed && <h3 className="sidebar-nav-title">📤 Retiros</h3>}
+                <ul className="sidebar-nav-list">
+                  <li className="sidebar-nav-item">
+                    <button 
+                      onClick={() => handleNavigation('retiro-placas')}
+                      className="sidebar-nav-button"
+                      title="Retiro de Placas"
+                    >
+                      <span>🔬</span>
+                      <span>Retiro de Placas</span>
+                    </button>
+                  </li>
+                  <li className="sidebar-nav-item">
+                    <button 
+                      onClick={() => handleNavigation('retiro-lentes')}
+                      className="sidebar-nav-button"
+                      title="Retiro de Lentes"
+                    >
+                      <span>🔍</span>
+                      <span>Retiro de Lentes</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
 
-              {/* Sección Inventario - Solo administradores o instructores de microscopía */}
-              {visibleSections.inventario && (
-                <div style={{ marginBottom: '25px' }}>
-                  <h4 style={{ 
-                    color: '#333',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    marginBottom: '10px',
-                    paddingLeft: '5px'
-                  }}>
-                    Inventario
-                  </h4>
-                  <ul style={{ listStyle: 'none', padding: 0, marginLeft: '10px' }}>
-                    <li style={{ marginBottom: '8px' }}>
-                      <button 
-                        onClick={() => onNavigate('inventario-placas')}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#007bff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          textAlign: 'left',
-                          padding: '5px 0',
-                          width: '100%'
-                        }}
-                      >
-                        Inventario de Placas
-                      </button>
-                    </li>
-                    <li style={{ marginBottom: '8px' }}>
-                      <button 
-                        onClick={() => onNavigate('inventario-lentes')}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#007bff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          textAlign: 'left',
-                          padding: '5px 0',
-                          width: '100%'
-                        }}
-                      >
-                        Inventario de Lentes
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              )}
+            {/* 📦 SECCIÓN INVENTARIO */}
+            {visibleSections.inventario && (
+              <div className="sidebar-nav-section">
+                {!isCollapsed && <h3 className="sidebar-nav-title">📦 Inventario</h3>}
+                <ul className="sidebar-nav-list">
+                  <li className="sidebar-nav-item">
+                    <button 
+                      onClick={() => handleNavigation('inventario-placas')}
+                      className="sidebar-nav-button"
+                      title="Inventario de Placas"
+                    >
+                      <span>🧫</span>
+                      <span>Inventario de Placas</span>
+                    </button>
+                  </li>
+                  <li className="sidebar-nav-item">
+                    <button 
+                      onClick={() => handleNavigation('inventario-lentes')}
+                      className="sidebar-nav-button"
+                      title="Inventario de Lentes"
+                    >
+                      <span>🔭</span>
+                      <span>Inventario de Lentes</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
 
-              {/* Sección Administración - Solo administradores */}
-              {visibleSections.administracion && (
-                <div style={{ marginBottom: '25px' }}>
-                  <h4 style={{ 
-                    color: '#333',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    marginBottom: '10px',
-                    paddingLeft: '5px'
-                  }}>
-                    Administración
-                  </h4>
-                  <ul style={{ listStyle: 'none', padding: 0, marginLeft: '10px' }}>
-                    <li style={{ marginBottom: '8px' }}>
-                      <button 
-                        onClick={() => onNavigate('registrar-usuario')}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#007bff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          textAlign: 'left',
-                          padding: '5px 0',
-                          width: '100%'
-                        }}
-                      >
-                        Registrar Usuario
-                      </button>
-                    </li>
-                    <li style={{ marginBottom: '8px' }}>
-                      <button 
-                        onClick={() => onNavigate('edicion-bd')}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#007bff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          textAlign: 'left',
-                          padding: '5px 0',
-                          width: '100%'
-                        }}
-                      >
-                        Edición de Base de Datos
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              )}
+            {/* ⚙️ SECCIÓN ADMINISTRACIÓN */}
+            {visibleSections.administracion && (
+              <div className="sidebar-nav-section">
+                {!isCollapsed && <h3 className="sidebar-nav-title">⚙️ Administración</h3>}
+                <ul className="sidebar-nav-list">
+                  <li className="sidebar-nav-item">
+                    <button 
+                      onClick={() => handleNavigation('registrar-usuario')}
+                      className="sidebar-nav-button"
+                      title="Registrar Usuario"
+                    >
+                      <span>👤</span>
+                      <span>Registrar Usuario</span>
+                    </button>
+                  </li>
+                  <li className="sidebar-nav-item">
+                    <button 
+                      onClick={() => handleNavigation('edicion-bd')}
+                      className="sidebar-nav-button"
+                      title="Edición de BD"
+                    >
+                      <span>🗄️</span>
+                      <span>Edición de BD</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
 
-              {/* Mensaje si no hay secciones disponibles */}
-              {!visibleSections.retiros && !visibleSections.inventario && !visibleSections.administracion && (
-                <div style={{ 
-                  textAlign: 'center', 
-                  color: '#666', 
-                  fontSize: '14px',
-                  padding: '20px 0'
+            {/* 📝 MENSAJE SI NO HAY SECCIONES */}
+            {!visibleSections.retiros && !visibleSections.inventario && !visibleSections.administracion && !isCollapsed && (
+              <div className="sidebar-nav-section">
+                <div style={{
+                  textAlign: 'center',
+                  padding: '20px',
+                  color: '#6b7280',
+                  fontSize: '14px'
                 }}>
-                  No tienes permisos para acceder a ninguna sección.
+                  <div style={{ fontSize: '32px', marginBottom: '10px' }}>🔒</div>
+                  <p>No tienes permisos para acceder a ninguna sección.</p>
+                  <p style={{ fontSize: '12px', marginTop: '10px' }}>
+                    Contacta al administrador si crees que esto es un error.
+                  </p>
                 </div>
-              )}
-            </nav>
-          )}
-        </div>
+              </div>
+            )}
+          </nav>
+        )}
 
-        <div style={{ 
-          padding: '20px',
-          borderTop: '1px solid #ddd',
-          flexShrink: 0
-        }}>
-          {isOpen && (
-            <div>
-              <p style={{ fontSize: '12px', marginBottom: '10px' }}>
-                {user?.email}
-              </p>
-              <button 
-                onClick={handleLogout} 
-                style={{ 
-                  width: '100%',
-                  padding: '8px',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '3px',
-                  cursor: 'pointer'
-                }}
-              >
-                Cerrar Sesión
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+        {/* 🚪 FOOTER CON LOGOUT */}
+        {(isOpen || (window.innerWidth >= 1024)) && (
+          <div className="sidebar-footer">
+            {!isCollapsed && (
+              <div className="sidebar-user-email">
+                📧 {user?.email}
+              </div>
+            )}
+            
+            <button 
+              onClick={handleLogout}
+              className="sidebar-logout-button"
+              title="Cerrar Sesión"
+            >
+              <span>🚪</span>
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
+        )}
+      </aside>
       
-      <div style={{ 
-        marginLeft: isOpen ? '250px' : '60px', 
-        transition: 'margin-left 0.3s',
-        minHeight: '100vh',
-        padding: '20px'
-      }}>
+      {/* 📄 CONTENIDO PRINCIPAL */}
+      <main className={`main-content ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
         {children}
-      </div>
-    </div>
+      </main>
+    </>
   );
 };
 

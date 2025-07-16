@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './RegisterUserForm.css'; // 🎨 Importar estilos específicos
 
 const RegisterUserForm = ({ onBack, onUserCreated, loading, error }) => {
   const [formData, setFormData] = useState({
@@ -127,23 +128,25 @@ const RegisterUserForm = ({ onBack, onUserCreated, loading, error }) => {
   };
 
   return (
-    <div>
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={onBack}>← Volver</button>
+    <div className="register-user-form">
+      {/* Header */}
+      <div className="register-form-header">
+        <button 
+          onClick={onBack}
+          className="register-form-back-button"
+        >
+          ← Volver
+        </button>
+        <h2 className="register-form-title">
+          👤 Registrar Nuevo Usuario
+        </h2>
       </div>
       
-      <h2>Registrar Nuevo Usuario</h2>
-      
-      {/* Mostrar errores de validación */}
+      {/* Errores de validación */}
       {validationErrors.length > 0 && (
-        <div style={{ 
-          backgroundColor: '#f8d7da', 
-          color: '#721c24',
-          padding: '10px',
-          borderRadius: '5px',
-          marginBottom: '15px'
-        }}>
-          <ul style={{ margin: 0, paddingLeft: '20px' }}>
+        <div className="register-form-errors">
+          <strong>⚠️ Errores encontrados:</strong>
+          <ul>
             {validationErrors.map((error, index) => (
               <li key={index}>{error}</li>
             ))}
@@ -153,157 +156,177 @@ const RegisterUserForm = ({ onBack, onUserCreated, loading, error }) => {
 
       {/* Mensaje de éxito */}
       {message && (
-        <div style={{ 
-          backgroundColor: '#d4edda', 
-          color: '#155724',
-          padding: '10px',
-          borderRadius: '5px',
-          marginBottom: '15px'
-        }}>
-          {message}
+        <div className="register-form-success">
+          ✅ {message}
         </div>
       )}
       
-      <form onSubmit={handleSubmit} autoComplete="off">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-          <div>
-            <label>Correo Electrónico: *</label>
+      {/* Formulario principal */}
+      <form onSubmit={handleSubmit} className="register-form" autoComplete="off">
+        <div className="register-form-grid">
+          {/* Email */}
+          <div className="register-form-field">
+            <label className="register-form-label">
+              📧 Correo Electrónico <span className="register-form-required">*</span>
+            </label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               autoComplete="off"
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              className="register-form-input"
+              placeholder="usuario@ejemplo.com"
               required
             />
           </div>
 
-          <div>
-            <label>Contraseña: *</label>
+          {/* Contraseña */}
+          <div className="register-form-field">
+            <label className="register-form-label">
+              🔒 Contraseña <span className="register-form-required">*</span>
+            </label>
             <input
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               autoComplete="new-password"
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              className="register-form-input"
               placeholder="Mínimo 6 caracteres"
               required
             />
           </div>
 
-          <div>
-            <label>Nombre: *</label>
+          {/* Nombre */}
+          <div className="register-form-field">
+            <label className="register-form-label">
+              👤 Nombre <span className="register-form-required">*</span>
+            </label>
             <input
               type="text"
               name="nombre"
               value={formData.nombre}
               onChange={handleChange}
               autoComplete="off"
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              className="register-form-input"
+              placeholder="Nombre del usuario"
               required
             />
           </div>
 
-          <div>
-            <label>Confirmar Contraseña: *</label>
+          {/* Confirmar Contraseña */}
+          <div className="register-form-field">
+            <label className="register-form-label">
+              🔒 Confirmar Contraseña <span className="register-form-required">*</span>
+            </label>
             <input
               type="password"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
               autoComplete="new-password"
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              className="register-form-input"
               placeholder="Repetir contraseña"
               required
             />
           </div>
 
-          <div>
-            <label>Apellidos: *</label>
+          {/* Apellidos */}
+          <div className="register-form-field">
+            <label className="register-form-label">
+              👥 Apellidos <span className="register-form-required">*</span>
+            </label>
             <input
               type="text"
               name="apellidos"
               value={formData.apellidos}
               onChange={handleChange}
               autoComplete="off"
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              className="register-form-input"
+              placeholder="Apellidos del usuario"
               required
             />
           </div>
 
-          <div>
-            <label>Rol: *</label>
+          {/* Rol */}
+          <div className="register-form-field">
+            <label className="register-form-label">
+              🎭 Rol <span className="register-form-required">*</span>
+            </label>
             <select
               name="rol"
               value={formData.rol}
               onChange={handleChange}
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              className="register-form-select"
               required
             >
               <option value="">Seleccionar Rol</option>
-              <option value="administrador">Administrador</option>
-              <option value="instructor">Instructor</option>
+              <option value="administrador">🔑 Administrador</option>
+              <option value="instructor">👨‍🏫 Instructor</option>
             </select>
           </div>
 
-          <div>
-            <label>Comité: *</label>
+          {/* Comité */}
+          <div className="register-form-field">
+            <label className="register-form-label">
+              🏢 Comité <span className="register-form-required">*</span>
+            </label>
             <select
               name="comite"
               value={formData.comite}
               onChange={handleChange}
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              className="register-form-select"
               required
             >
               <option value="">Seleccionar Comité</option>
-              <option value="microscopia">Microscopía</option>
-              <option value="redes">Redes</option>
-              <option value="decoracion">Decoración</option>
+              <option value="microscopia">🔬 Microscopía</option>
+              <option value="redes">🌐 Redes</option>
+              <option value="decoracion">🎨 Decoración</option>
             </select>
           </div>
 
-          <div>
-            <label>Foto del Usuario (máximo 5MB):</label>
+          {/* Foto del usuario */}
+          <div className="register-form-field register-form-file-field">
+            <label className="register-form-label">
+              📸 Foto del Usuario (máximo 5MB)
+            </label>
             <input
               type="file"
               accept="image/*"
               onChange={handlePhotoChange}
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+              className="register-form-file-input"
             />
             {photo && (
-              <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                Archivo seleccionado: {photo.name}
-              </p>
+              <div className="register-form-file-selected">
+                ✅ Archivo seleccionado: {photo.name}
+              </div>
             )}
           </div>
         </div>
 
-        <div style={{ marginTop: '20px' }}>
-          <p style={{ fontSize: '12px', color: '#666', marginBottom: '15px' }}>
-            * Campos obligatorios
+        {/* Sección de ayuda */}
+        <div className="register-form-help">
+          <p className="register-form-help-text">
+            <span className="register-form-required">*</span> Campos obligatorios
           </p>
           
           <button 
             type="submit" 
             disabled={loading}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: loading ? '#ccc' : '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: '16px'
-            }}
+            className="register-form-submit"
           >
-            {loading ? 'Registrando...' : 'Registrar Usuario'}
+            {loading ? '⏳ Registrando...' : '✅ Registrar Usuario'}
           </button>
         </div>
       </form>
       
-      {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
+      {/* Error global */}
+      {error && (
+        <div className="register-form-global-error">
+          ❌ {error}
+        </div>
+      )}
     </div>
   );
 };

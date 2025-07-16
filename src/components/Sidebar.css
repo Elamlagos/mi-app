@@ -1,0 +1,914 @@
+/* ===================================================================
+   💫 SIDEBAR.CSS - DISEÑO ULTRA-PROFESIONAL Y SOFISTICADO
+   Mobile-first | Tonos claros | Sin emojis | Estilo corporativo
+   =================================================================== */
+
+:root {
+  /* 🤍 Paleta ultra-clara y profesional */
+  --white: #ffffff;
+  --gray-25: #fdfdfd;
+  --gray-50: #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-150: #f0f0f0;
+  --gray-200: #e8e8e8;
+  --gray-300: #d6d6d6;
+  --gray-400: #a8a8a8;
+  --gray-500: #6b6b6b;
+  --gray-600: #4a4a4a;
+  --gray-700: #333333;
+  --gray-800: #1f1f1f;
+  
+  /* 🔵 Azul corporativo del logo */
+  --primary: #2b5f8a;
+  --primary-light: #4a90b8;
+  --primary-hover: rgba(43, 95, 138, 0.06);
+  --primary-border: rgba(43, 95, 138, 0.12);
+  --primary-glow: rgba(43, 95, 138, 0.15);
+  
+  /* 🎨 Colores de estado */
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  
+  /* 📏 Sistema de espaciado */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  
+  /* 📐 Dimensiones del sidebar */
+  --sidebar-width-full: 280px;
+  --sidebar-width-collapsed: 64px;
+  --header-height: 64px;
+  --nav-item-height: 48px;
+  
+  /* 🔄 Animaciones premium */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  
+  /* 🌫️ Sombras corporativas */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  
+  /* 📐 Border radius system */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  
+  /* 🔤 Tipografía profesional */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 MOBILE NAV BAR - ULTRA PROFESIONAL
+   └───────────────────────────────────────────────────────────── */
+.mobile-nav-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  background: linear-gradient(135deg, var(--white) 0%, var(--gray-25) 100%);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--gray-200);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.mobile-menu-button {
+  position: relative;
+  width: var(--nav-item-height);
+  height: var(--nav-item-height);
+  border: none;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  margin-right: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.mobile-menu-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 12px;
+  background-image: 
+    linear-gradient(to right, currentColor 0%, currentColor 100%),
+    linear-gradient(to right, currentColor 0%, currentColor 100%),
+    linear-gradient(to right, currentColor 0%, currentColor 100%);
+  background-size: 100% 2px, 100% 2px, 100% 2px;
+  background-position: 0 0, 0 5px, 0 10px;
+  background-repeat: no-repeat;
+  transition: all var(--transition-normal);
+}
+
+.mobile-menu-button:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-border);
+  color: var(--primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.mobile-menu-button:active {
+  transform: translateY(0);
+}
+
+.mobile-page-title {
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  color: var(--gray-800);
+  flex: 1;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🌫️ OVERLAY PREMIUM
+   └───────────────────────────────────────────────────────────── */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.4) 100%);
+  backdrop-filter: blur(4px);
+  z-index: 45;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-smooth);
+}
+
+.sidebar-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🎯 SIDEBAR PRINCIPAL - DISEÑO CORPORATIVO
+   └───────────────────────────────────────────────────────────── */
+.sidebar-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width-full);
+  background: linear-gradient(180deg, var(--white) 0%, var(--gray-25) 100%);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--gray-200);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-xl);
+  
+  /* Mobile: drawer oculto */
+  transform: translateX(-100%);
+  transition: transform var(--transition-smooth);
+}
+
+.sidebar-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--primary) 0%, transparent 50%, var(--primary) 100%);
+  opacity: 0.3;
+}
+
+.sidebar-container.open {
+  transform: translateX(0);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 👤 HEADER EJECUTIVO
+   └───────────────────────────────────────────────────────────── */
+.sidebar-header {
+  padding: var(--space-6) var(--space-5);
+  border-bottom: 1px solid var(--gray-150);
+  background: linear-gradient(135deg, var(--gray-25) 0%, var(--white) 100%);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.sidebar-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--space-5);
+  right: var(--space-5);
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--primary-border) 50%, transparent 100%);
+}
+
+.sidebar-toggle {
+  width: var(--nav-item-height);
+  height: var(--nav-item-height);
+  border: none;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  margin-bottom: var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.sidebar-toggle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right: none;
+  border-top: none;
+  transition: transform var(--transition-normal);
+}
+
+.sidebar-toggle:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-border);
+  color: var(--primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.sidebar-toggle:hover::before {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.sidebar-page-title {
+  font-size: 24px;
+  font-weight: var(--font-weight-extrabold);
+  color: var(--gray-800);
+  margin: 0 0 var(--space-5) 0;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  background: linear-gradient(135deg, var(--gray-800) 0%, var(--primary) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.sidebar-user-info {
+  background: var(--white);
+  border: 1px solid var(--gray-150);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-user-info::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+}
+
+.sidebar-user-name {
+  font-size: 16px;
+  font-weight: var(--font-weight-bold);
+  color: var(--gray-800);
+  margin: 0 0 var(--space-3) 0;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-user-role {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+  position: relative;
+}
+
+.sidebar-user-role.admin {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid #fecaca;
+}
+
+.sidebar-user-role.admin::before {
+  content: '⬟';
+  margin-right: var(--space-1);
+}
+
+.sidebar-user-role.instructor {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid #bbf7d0;
+}
+
+.sidebar-user-role.instructor::before {
+  content: '◆';
+  margin-right: var(--space-1);
+}
+
+.sidebar-user-committee {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 0;
+  font-weight: var(--font-weight-medium);
+}
+
+.sidebar-user-committee::before {
+  content: '▸';
+  margin-right: var(--space-2);
+  color: var(--primary);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🧭 NAVEGACIÓN CORPORATIVA
+   └───────────────────────────────────────────────────────────── */
+.sidebar-nav {
+  flex: 1;
+  padding: var(--space-5);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 2px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+.sidebar-nav-section {
+  margin-bottom: var(--space-8);
+  position: relative;
+}
+
+.sidebar-nav-title {
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gray-500);
+  margin: 0 0 var(--space-4) 0;
+  padding: 0 var(--space-3);
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-nav-title::before {
+  content: '';
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--primary);
+  margin-right: var(--space-3);
+}
+
+.sidebar-nav-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--primary-border) 0%, transparent 100%);
+  margin-left: var(--space-3);
+}
+
+.sidebar-nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sidebar-nav-button {
+  width: 100%;
+  min-height: var(--nav-item-height);
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  background: transparent;
+  color: var(--gray-700);
+  font-size: 14px;
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-nav-button::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  transition: width var(--transition-normal);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.sidebar-nav-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--primary-hover);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  border-radius: var(--radius-lg);
+}
+
+.sidebar-nav-button:hover::before {
+  width: 3px;
+}
+
+.sidebar-nav-button:hover::after {
+  opacity: 1;
+}
+
+.sidebar-nav-button:hover {
+  color: var(--primary);
+  transform: translateX(2px);
+}
+
+.sidebar-nav-button:active {
+  transform: translateX(1px);
+}
+
+/* Iconos CSS para navegación */
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Icono de retiro de placas */
+.nav-icon.plates::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+/* Icono de retiro de lentes */
+.nav-icon.lenses::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+}
+
+/* Icono de inventario de placas */
+.nav-icon.inventory-plates::before {
+  content: '';
+  width: 16px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+/* Icono de inventario de lentes */
+.nav-icon.inventory-lenses::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* Icono de usuario */
+.nav-icon.user::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.nav-icon.user::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  width: 12px;
+  height: 6px;
+  border: 2px solid currentColor;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: transparent;
+}
+
+/* Icono de base de datos */
+.nav-icon.database::before {
+  content: '';
+  width: 14px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-xs);
+  background: transparent;
+}
+
+.nav-icon.database::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 10px;
+  height: 1px;
+  background: currentColor;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🚪 FOOTER CORPORATIVO
+   └───────────────────────────────────────────────────────────── */
+.sidebar-footer {
+  padding: var(--space-5);
+  border-top: 1px solid var(--gray-150);
+  background: linear-gradient(135deg, var(--gray-25) 0%, var(--white) 100%);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.sidebar-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--space-5);
+  right: var(--space-5);
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--primary-border) 50%, transparent 100%);
+}
+
+.sidebar-user-email {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin: 0 0 var(--space-4) 0;
+  font-weight: var(--font-weight-medium);
+  word-break: break-all;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-user-email::before {
+  content: '✉';
+  margin-right: var(--space-2);
+  color: var(--primary);
+  font-size: 10px;
+}
+
+.sidebar-logout-button {
+  width: 100%;
+  height: var(--nav-item-height);
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-700);
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.sidebar-logout-button::before {
+  content: '⏻';
+  font-size: 16px;
+  transition: transform var(--transition-normal);
+}
+
+.sidebar-logout-button:hover {
+  background: var(--danger-light);
+  border-color: #fecaca;
+  color: var(--danger);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.sidebar-logout-button:hover::before {
+  transform: rotate(180deg);
+}
+
+.sidebar-logout-button:active {
+  transform: translateY(0);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📄 CONTENIDO PRINCIPAL
+   └───────────────────────────────────────────────────────────── */
+.main-content {
+  min-height: 100vh;
+  background: var(--gray-50);
+  transition: margin-left var(--transition-smooth);
+  position: relative;
+  
+  /* Mobile: padding superior para nav bar */
+  padding-top: var(--header-height);
+  margin-left: 0;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+  padding-bottom: var(--space-4);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📟 TABLET RESPONSIVE (640px+)
+   └───────────────────────────────────────────────────────────── */
+@media (min-width: 640px) {
+  .main-content {
+    padding: calc(var(--header-height) + var(--space-6)) var(--space-8) var(--space-6);
+  }
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🖥️ DESKTOP TRANSFORMACIÓN (1024px+)
+   └───────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  
+  /* Ocultar elementos mobile */
+  .mobile-nav-bar {
+    display: none;
+  }
+  
+  .sidebar-overlay {
+    display: none;
+  }
+  
+  /* Sidebar siempre visible */
+  .sidebar-container {
+    transform: translateX(0);
+    width: var(--sidebar-width-full);
+    transition: width var(--transition-smooth);
+  }
+  
+  /* Estado colapsado elegante */
+  .sidebar-container.collapsed {
+    width: var(--sidebar-width-collapsed);
+  }
+  
+  /* Contenido se ajusta fluidamente */
+  .main-content {
+    margin-left: var(--sidebar-width-full);
+    padding-top: var(--space-8);
+    padding-left: var(--space-10);
+    padding-right: var(--space-10);
+    transition: margin-left var(--transition-smooth);
+  }
+  
+  .main-content.sidebar-collapsed {
+    margin-left: var(--sidebar-width-collapsed);
+  }
+  
+  /* ─────────────────────────────────────────────────────────
+     ESTILOS PARA SIDEBAR COLAPSADO - ULTRA ELEGANTE
+     ───────────────────────────────────────────────────────── */
+  
+  .sidebar-container.collapsed .sidebar-page-title,
+  .sidebar-container.collapsed .sidebar-user-info,
+  .sidebar-container.collapsed .sidebar-nav-title,
+  .sidebar-container.collapsed .sidebar-user-email {
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all var(--transition-normal);
+    pointer-events: none;
+  }
+  
+  .sidebar-container.collapsed .sidebar-header {
+    padding: var(--space-4);
+    text-align: center;
+  }
+  
+  .sidebar-container.collapsed .sidebar-toggle {
+    margin-bottom: 0;
+  }
+  
+  .sidebar-container.collapsed .sidebar-toggle::before {
+    transform: translate(-50%, -50%) rotate(135deg);
+  }
+  
+  .sidebar-container.collapsed .sidebar-nav {
+    padding: var(--space-4) var(--space-2);
+  }
+  
+  .sidebar-container.collapsed .sidebar-nav-button {
+    padding: var(--space-3);
+    justify-content: center;
+    position: relative;
+  }
+  
+  .sidebar-container.collapsed .sidebar-nav-button span:last-child {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all var(--transition-normal);
+    position: absolute;
+    pointer-events: none;
+  }
+  
+  .sidebar-container.collapsed .sidebar-footer {
+    padding: var(--space-4) var(--space-2);
+    text-align: center;
+  }
+  
+  .sidebar-container.collapsed .sidebar-logout-button {
+    width: auto;
+    padding: var(--space-3);
+    justify-content: center;
+  }
+  
+  .sidebar-container.collapsed .sidebar-logout-button span:last-child {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all var(--transition-normal);
+    position: absolute;
+    pointer-events: none;
+  }
+  
+  /* Tooltips para iconos colapsados */
+  .sidebar-container.collapsed .sidebar-nav-button {
+    position: relative;
+  }
+  
+  .sidebar-container.collapsed .sidebar-nav-button:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: calc(100% + var(--space-3));
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--gray-800);
+    color: var(--white);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 100;
+    opacity: 1;
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ ✨ ANIMACIONES CORPORATIVAS
+   └───────────────────────────────────────────────────────────── */
+.sidebar-container {
+  animation: slideInSidebar 0.5s var(--spring);
+}
+
+@keyframes slideInSidebar {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sidebar-nav-section {
+  animation: fadeInSection 0.4s ease-out both;
+}
+
+.sidebar-nav-section:nth-child(1) { animation-delay: 0.1s; }
+.sidebar-nav-section:nth-child(2) { animation-delay: 0.2s; }
+.sidebar-nav-section:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes fadeInSection {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🔍 ACCESIBILIDAD CORPORATIVA
+   └───────────────────────────────────────────────────────────── */
+.mobile-menu-button:focus-visible,
+.sidebar-toggle:focus-visible,
+.sidebar-nav-button:focus-visible,
+.sidebar-logout-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--primary-glow);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 OPTIMIZACIONES PREMIUM MOBILE
+   └───────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .main-content {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  
+  .sidebar-container {
+    width: calc(100vw - 32px);
+    max-width: 320px;
+  }
+}
+
+/* Safe area para dispositivos con notch */
+@supports (padding: max(0px)) {
+  .sidebar-container {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .mobile-nav-bar {
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+  }
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🎯 OPTIMIZACIONES FINALES
+   └───────────────────────────────────────────────────────────── */
+body {
+  overflow-x: hidden;
+}
+
+.main-content > * {
+  position: relative;
+  z-index: 2;
+}
