@@ -97,6 +97,78 @@ const UltraFastScanner = ({
     }
   }, [onError]);
 
+  // 🔍 FUNCIÓN DE ESCANEO CONTINUO
+  const startScanning = useCallback(() => {
+    if (!readerRef.current || !videoRef.current || scanningRef.current) {
+      return;
+    }
+
+    scanningRef.current = true;
+    console.log('🔍 Iniciando escaneo continuo...');
+
+    const scanFrame = async () => {
+      if (!scanningRef.current || !mountedRef.current || !videoRef.current) {
+        return;
+      }
+
+      try {
+        const now = Date.now();
+        
+        // Control de velocidad de escaneo
+        if (now - lastScanTimeRef.current < scanDelay) {
+          requestAnimationFrame(scanFrame);
+          return;
+        }
+
+        // Verificar que el video esté listo
+        if (videoRef.current.readyState >= 2) {
+          try {
+            const result = await readerRef.current.decodeOnceFromVideoDevice(
+              undefined, 
+              videoRef.current
+            );
+
+            if (result && result.text) {
+              const scannedText = result.text.trim();
+              
+              // Evitar códigos duplicados consecutivos
+              if (scannedText !== lastScannedCode) {
+                console.log('✅ Código detectado:', scannedText);
+                setLastScannedCode(scannedText);
+                lastScanTimeRef.current = now;
+                
+                // Enviar código detectado
+                onCodeDetected?.(scannedText);
+                
+                // Pequeña pausa tras detección exitosa
+                await new Promise(resolve => setTimeout(resolve, 300));
+              }
+            }
+          } catch (scanError) {
+            // Los errores de "No QR code found" son normales, no los reportamos
+            if (!scanError.message?.includes('No MultiFormat Readers were able to detect the code')) {
+              console.warn('Error de escaneo menor:', scanError.message);
+            }
+          }
+        }
+
+        // Continuar escaneando
+        if (scanningRef.current) {
+          requestAnimationFrame(scanFrame);
+        }
+
+      } catch (error) {
+        console.error('Error en frame de escaneo:', error);
+        if (scanningRef.current) {
+          setTimeout(scanFrame, 100); // Reintentar tras error
+        }
+      }
+    };
+
+    // Iniciar el bucle de escaneo
+    scanFrame();
+  }, [scanDelay, onCodeDetected, lastScannedCode]);
+
   // 🚀 FUNCIÓN PRINCIPAL PARA INICIALIZAR EL ESCÁNER
   const initializeScanner = useCallback(async (cameraIndex = 0) => {
     if (!mountedRef.current || isInitializing) {
@@ -194,79 +266,7 @@ const UltraFastScanner = ({
     } finally {
       setIsInitializing(false);
     }
-  }, [isInitializing, releaseCamera, getCameraDevices, onError]);
-
-  // 🔍 FUNCIÓN DE ESCANEO CONTINUO
-  const startScanning = useCallback(() => {
-    if (!readerRef.current || !videoRef.current || scanningRef.current) {
-      return;
-    }
-
-    scanningRef.current = true;
-    console.log('🔍 Iniciando escaneo continuo...');
-
-    const scanFrame = async () => {
-      if (!scanningRef.current || !mountedRef.current || !videoRef.current) {
-        return;
-      }
-
-      try {
-        const now = Date.now();
-        
-        // Control de velocidad de escaneo
-        if (now - lastScanTimeRef.current < scanDelay) {
-          requestAnimationFrame(scanFrame);
-          return;
-        }
-
-        // Verificar que el video esté listo
-        if (videoRef.current.readyState >= 2) {
-          try {
-            const result = await readerRef.current.decodeOnceFromVideoDevice(
-              undefined, 
-              videoRef.current
-            );
-
-            if (result && result.text) {
-              const scannedText = result.text.trim();
-              
-              // Evitar códigos duplicados consecutivos
-              if (scannedText !== lastScannedCode) {
-                console.log('✅ Código detectado:', scannedText);
-                setLastScannedCode(scannedText);
-                lastScanTimeRef.current = now;
-                
-                // Enviar código detectado
-                onCodeDetected?.(scannedText);
-                
-                // Pequeña pausa tras detección exitosa
-                await new Promise(resolve => setTimeout(resolve, 300));
-              }
-            }
-          } catch (scanError) {
-            // Los errores de "No QR code found" son normales, no los reportamos
-            if (!scanError.message?.includes('No MultiFormat Readers were able to detect the code')) {
-              console.warn('Error de escaneo menor:', scanError.message);
-            }
-          }
-        }
-
-        // Continuar escaneando
-        if (scanningRef.current) {
-          requestAnimationFrame(scanFrame);
-        }
-
-      } catch (error) {
-        console.error('Error en frame de escaneo:', error);
-        if (scanningRef.current) {
-          setTimeout(scanFrame, 100); // Reintentar tras error
-        }
-      }
-    };
-
-    // Iniciar el bucle de escaneo
-    scanFrame();
-  }, [scanDelay, onCodeDetected]);
+  }, [isInitializing, releaseCamera, getCameraDevices, onError, startScanning]);
 
   // 🔄 FUNCIÓN PARA CAMBIAR DE CÁMARA
   const switchCamera = useCallback(async () => {
@@ -498,7 +498,9 @@ const UltraFastScanner = ({
 
 export default UltraFastScanner;
 
-console.log('📷 UltraFastScanner v3.0 - GESTIÓN PROFESIONAL DE CÁMARAS');
+console.log('📷 UltraFastScanner v3.1 - SIN DUPLICACIONES NI WARNINGS');
+console.log('✅ Todas las dependencias de useCallback corregidas');
+console.log('✅ Función startScanning declarada una sola vez');
 console.log('✅ Liberación completa de recursos entre cambios');
 console.log('✅ Detección automática de cámaras disponibles');
 console.log('✅ Cambio suave entre cámaras sin reinicio');
