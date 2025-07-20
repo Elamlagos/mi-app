@@ -1,0 +1,868 @@
+/* ===================================================================
+   📱 LOGIN.CSS - DISEÑO MÓVIL PERFECTO CON TEMÁTICA DE HISTOLOGÍA
+   Mobile-first | Optimizado para táctil | Fondo animado temático
+   =================================================================== */
+
+:root {
+  /* Paleta móvil optimizada */
+  --white: #ffffff;
+  --gray-50: #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  
+  /* Azul corporativo refinado */
+  --primary: #2b5f8a;
+  --primary-light: #4a90b8;
+  --primary-dark: #1a3f5e;
+  --primary-subtle: rgba(43, 95, 138, 0.06);
+  
+  /* Estados claros */
+  --success: #059669;
+  --error: #dc2626;
+  
+  /* Espaciado móvil optimizado */
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  
+  /* Transiciones táctiles */
+  --transition-fast: 150ms ease;
+  --transition-smooth: 250ms ease-out;
+  
+  /* Sombras móvil */
+  --shadow-mobile: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-floating: 0 8px 20px rgba(0, 0, 0, 0.12);
+  
+  /* Bordes móvil */
+  --radius-mobile: 12px;
+  --radius-large: 16px;
+  
+  /* Tamaños táctiles */
+  --touch-target: 48px;
+  --input-height: 56px;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 🧬 CONTENEDOR PRINCIPAL CON FONDO TEMÁTICO DE HISTOLOGÍA
+   └───────────────────────────────────────────────────────────── */
+.elegant-login {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  position: relative;
+  background: linear-gradient(135deg, 
+    #f0f9ff 0%,     
+    #dbeafe 10%,    
+    #fdf2f8 25%,    
+    #f3e8ff 40%,    
+    #ecfdf5 55%,    
+    #fffbeb 70%,    
+    #fef3c7 85%,    
+    #f0f9ff 100%    
+  );
+  background-size: 600% 600%;
+  animation: histologyVibrante 25s ease infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
+}
+
+/* Células y estructuras histológicas flotantes */
+.elegant-login::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 30%, transparent 50%),
+    radial-gradient(circle at 90% 10%, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.04) 25%, transparent 45%),
+    radial-gradient(circle at 25% 80%, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0.06) 35%, transparent 55%),
+    radial-gradient(circle at 70% 30%, rgba(236, 72, 153, 0.12) 0%, rgba(236, 72, 153, 0.04) 40%, transparent 60%),
+    radial-gradient(circle at 30% 60%, rgba(236, 72, 153, 0.15) 0%, rgba(236, 72, 153, 0.05) 35%, transparent 55%),
+    radial-gradient(ellipse at 15% 70%, rgba(168, 85, 247, 0.08) 0%, rgba(168, 85, 247, 0.03) 25%, transparent 45%),
+    radial-gradient(ellipse at 40% 25%, rgba(34, 197, 94, 0.06) 0%, rgba(34, 197, 94, 0.02) 20%, transparent 35%);
+  animation: celulasVivas 30s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Fibras musculares */
+.elegant-login::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 8px;
+  top: 55%;
+  left: 2%;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(168, 85, 247, 0.15) 10%, 
+    rgba(168, 85, 247, 0.25) 30%, 
+    rgba(34, 197, 94, 0.20) 50%, 
+    rgba(34, 197, 94, 0.25) 70%, 
+    rgba(168, 85, 247, 0.15) 90%, 
+    transparent 100%);
+  border-radius: 4px;
+  animation: fibraMusical 18s ease-in-out infinite;
+  transform-origin: center;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Células microscópicas */
+.login-microscopic-elements {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 3;
+}
+
+.login-microscopic-elements::before {
+  content: '';
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  top: 8%;
+  left: 5%;
+  border-radius: 50%;
+  border: 2px solid rgba(59, 130, 246, 0.2);
+  background: radial-gradient(circle at 35% 35%, 
+    rgba(59, 130, 246, 0.15) 0%,
+    rgba(59, 130, 246, 0.08) 25%,
+    rgba(236, 72, 153, 0.12) 40%,
+    rgba(236, 72, 153, 0.06) 70%, 
+    transparent 100%);
+  animation: celulaCompleta 20s ease-in-out infinite;
+  box-shadow: 
+    inset 0 0 30px rgba(59, 130, 246, 0.15),
+    0 0 40px rgba(59, 130, 246, 0.08);
+}
+
+.login-microscopic-elements::after {
+  content: '';
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  bottom: 12%;
+  right: 8%;
+  border-radius: 50%;
+  border: 2px solid rgba(236, 72, 153, 0.2);
+  background: radial-gradient(circle at 40% 30%, 
+    rgba(168, 85, 247, 0.15) 0%,
+    rgba(168, 85, 247, 0.08) 30%, 
+    rgba(34, 197, 94, 0.10) 50%,
+    rgba(34, 197, 94, 0.05) 80%, 
+    transparent 100%);
+  animation: celulaCompleta 20s ease-in-out infinite;
+  animation-delay: 10s;
+}
+
+/* Campo del microscopio */
+.login-microscope-field {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  height: 90%;
+  border: 3px solid rgba(43, 95, 138, 0.08);
+  border-radius: 50%;
+  background: radial-gradient(circle at center, 
+    transparent 0%, 
+    rgba(43, 95, 138, 0.02) 30%,
+    transparent 35%,
+    rgba(43, 95, 138, 0.03) 65%,
+    rgba(43, 95, 138, 0.08) 100%);
+  animation: microscopioDeluxe 35s linear infinite;
+  pointer-events: none;
+  opacity: 0.4;
+  z-index: 4;
+}
+
+.login-microscope-field::before {
+  content: '';
+  position: absolute;
+  top: 15%;
+  left: 15%;
+  right: 15%;
+  bottom: 15%;
+  border: 2px solid rgba(43, 95, 138, 0.12);
+  border-radius: 50%;
+  animation: microscopioDeluxe 25s linear infinite reverse;
+}
+
+.login-microscope-field::after {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 30%;
+  right: 30%;
+  bottom: 30%;
+  border: 1px solid rgba(43, 95, 138, 0.15);
+  border-radius: 50%;
+  background: radial-gradient(circle at center, 
+    rgba(43, 95, 138, 0.05) 0%, 
+    transparent 70%);
+  animation: microscopioDeluxe 20s linear infinite;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 CONTENEDOR FORMULARIO
+   └───────────────────────────────────────────────────────────── */
+.login-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius-large);
+  padding: var(--space-8) var(--space-6);
+  box-shadow: var(--shadow-floating);
+  border: 1px solid rgba(43, 95, 138, 0.08);
+  animation: slideInMobile 0.6s ease-out;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📋 HEADER
+   └───────────────────────────────────────────────────────────── */
+.login-header {
+  text-align: center;
+  margin-bottom: var(--space-8);
+  position: relative;
+}
+
+.login-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0 0 var(--space-4) 0;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+.login-subtitle {
+  font-size: 16px;
+  color: var(--gray-600);
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.login-header::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0.6;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📝 FORMULARIO
+   └───────────────────────────────────────────────────────────── */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.login-field {
+  position: relative;
+  width: 100%;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 INPUTS
+   └───────────────────────────────────────────────────────────── */
+.login-input {
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 var(--space-5);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-mobile);
+  background: var(--white);
+  font-size: 16px;
+  color: var(--gray-800);
+  transition: all var(--transition-smooth);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  -webkit-border-radius: var(--radius-mobile);
+  box-sizing: border-box;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.login-field.password-field .login-input {
+  padding-right: 60px;
+}
+
+.login-input::placeholder {
+  color: var(--gray-400);
+  opacity: 1;
+  font-size: 16px;
+}
+
+.login-input:hover:not(:focus) {
+  border-color: var(--gray-300);
+  box-shadow: var(--shadow-mobile);
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-subtle), var(--shadow-elevated);
+}
+
+.login-input:focus::placeholder {
+  color: var(--gray-300);
+}
+
+.login-input:valid:not(:placeholder-shown) {
+  border-color: var(--success);
+}
+
+.login-input:invalid:not(:placeholder-shown):not(:focus) {
+  border-color: var(--error);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 👁️ BOTÓN MOSTRAR CONTRASEÑA
+   └───────────────────────────────────────────────────────────── */
+.password-toggle {
+  position: absolute;
+  right: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  width: var(--touch-target);
+  height: var(--touch-target);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.password-toggle:hover {
+  background: rgba(43, 95, 138, 0.05);
+}
+
+.password-toggle:active {
+  background: rgba(43, 95, 138, 0.1);
+  transform: translateY(-50%) scale(0.95);
+}
+
+.password-toggle-icon {
+  font-size: 20px;
+  color: var(--gray-500);
+  transition: color var(--transition-fast);
+}
+
+.password-toggle:hover .password-toggle-icon {
+  color: var(--primary);
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ ☑️ CHECKBOX RECORDAR USUARIO - ARREGLADO
+   └───────────────────────────────────────────────────────────── */
+.remember-user-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  border-radius: var(--radius-mobile);
+  transition: background var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  width: 100%;
+  justify-content: flex-start;
+  margin: 0; /* Sin margin para evitar conflictos */
+}
+
+.remember-user-section:hover {
+  background: rgba(43, 95, 138, 0.03);
+}
+
+.remember-checkbox {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.checkbox-custom {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--gray-300);
+  border-radius: 5px;
+  background: var(--white);
+  transition: all var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: var(--shadow-mobile);
+}
+
+.checkbox-custom::after {
+  content: '✓';
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--white);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all var(--transition-fast);
+}
+
+.remember-checkbox:checked + .checkbox-custom {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-subtle), var(--shadow-mobile);
+}
+
+.remember-checkbox:checked + .checkbox-custom::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.remember-checkbox:focus + .checkbox-custom {
+  box-shadow: 0 0 0 3px var(--primary-subtle);
+}
+
+.remember-label {
+  font-size: 15px;
+  color: var(--gray-700);
+  cursor: pointer;
+  flex: 1;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 BOTÓN
+   └───────────────────────────────────────────────────────────── */
+.login-button {
+  width: 100%;
+  height: var(--input-height);
+  border: none;
+  border-radius: var(--radius-mobile);
+  background: var(--primary);
+  color: var(--white);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  margin-top: var(--space-5);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: var(--touch-target);
+  -webkit-text-size-adjust: 100%;
+}
+
+.login-button:active {
+  background: var(--primary-dark);
+  transform: scale(0.98);
+}
+
+.login-button:disabled {
+  background: var(--gray-300);
+  color: var(--gray-500);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 INDICADOR DE CARGA
+   └───────────────────────────────────────────────────────────── */
+.login-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  color: var(--white);
+}
+
+.login-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid var(--white);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ ⚠️ ERROR
+   └───────────────────────────────────────────────────────────── */
+.login-error {
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: var(--radius-mobile);
+  padding: var(--space-4) var(--space-5);
+  color: var(--error);
+  font-size: 15px;
+  text-align: center;
+  margin-bottom: var(--space-6);
+  line-height: 1.4;
+  animation: errorAppear 0.3s ease-out;
+}
+
+.login-error::before {
+  content: '⚠';
+  margin-right: var(--space-2);
+  opacity: 0.8;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 FOOTER
+   └───────────────────────────────────────────────────────────── */
+.login-footer {
+  margin-top: var(--space-8);
+  text-align: center;
+  font-size: 14px;
+  color: var(--gray-500);
+  line-height: 1.4;
+  padding: 0 var(--space-2);
+}
+
+.login-footer p {
+  margin: 0;
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 RESPONSIVE
+   └───────────────────────────────────────────────────────────── */
+@media (max-width: 375px) {
+  .elegant-login {
+    padding: var(--space-3);
+  }
+  
+  .login-container {
+    padding: var(--space-6) var(--space-4);
+  }
+  
+  .login-title {
+    font-size: 22px;
+  }
+  
+  .login-subtitle {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 376px) and (max-width: 414px) {
+  .login-container {
+    max-width: 380px;
+  }
+}
+
+@media (min-width: 415px) and (max-width: 767px) {
+  .login-container {
+    max-width: 420px;
+    padding: var(--space-8);
+  }
+  
+  .login-title {
+    font-size: 28px;
+  }
+}
+
+@media (min-width: 768px) {
+  .elegant-login {
+    padding: var(--space-8);
+  }
+  
+  .login-container {
+    max-width: 440px;
+    padding: var(--space-10);
+  }
+  
+  .login-container:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-floating), 0 0 25px rgba(43, 95, 138, 0.08);
+  }
+  
+  .login-button:hover:not(:disabled) {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-elevated);
+  }
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  .elegant-login {
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  .login-container {
+    padding: var(--space-5) var(--space-6);
+  }
+  
+  .login-header {
+    margin-bottom: var(--space-5);
+  }
+  
+  .login-title {
+    font-size: 22px;
+    margin-bottom: var(--space-3);
+  }
+  
+  .login-subtitle {
+    font-size: 14px;
+  }
+  
+  .login-form {
+    gap: var(--space-4);
+  }
+  
+  .login-footer {
+    margin-top: var(--space-5);
+    font-size: 13px;
+  }
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ ✨ ANIMACIONES DE HISTOLOGÍA
+   └───────────────────────────────────────────────────────────── */
+@keyframes histologyVibrante {
+  0% {
+    background-position: 0% 50%;
+  }
+  20% {
+    background-position: 80% 20%;
+  }
+  40% {
+    background-position: 100% 80%;
+  }
+  60% {
+    background-position: 20% 100%;
+  }
+  80% {
+    background-position: 80% 30%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes celulasVivas {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  20% {
+    opacity: 0.8;
+    transform: scale(1.1) rotate(72deg);
+  }
+  40% {
+    opacity: 0.9;
+    transform: scale(0.9) rotate(144deg);
+  }
+  60% {
+    opacity: 0.7;
+    transform: scale(1.05) rotate(216deg);
+  }
+  80% {
+    opacity: 0.85;
+    transform: scale(0.95) rotate(288deg);
+  }
+}
+
+@keyframes celulaCompleta {
+  0%, 100% {
+    transform: translateY(0px) scale(1) rotate(0deg);
+    opacity: 0.8;
+    filter: hue-rotate(0deg);
+  }
+  25% {
+    transform: translateY(-15px) scale(1.15) rotate(90deg);
+    opacity: 1;
+    filter: hue-rotate(30deg);
+  }
+  50% {
+    transform: translateY(10px) scale(0.85) rotate(180deg);
+    opacity: 0.6;
+    filter: hue-rotate(60deg);
+  }
+  75% {
+    transform: translateY(-8px) scale(1.08) rotate(270deg);
+    opacity: 0.9;
+    filter: hue-rotate(90deg);
+  }
+}
+
+@keyframes fibraMusical {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg) scaleX(1);
+    opacity: 0.4;
+  }
+  25% {
+    transform: translateY(-12px) rotate(5deg) scaleX(1.1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(8px) rotate(-3deg) scaleX(0.9);
+    opacity: 0.5;
+  }
+  75% {
+    transform: translateY(-6px) rotate(7deg) scaleX(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes microscopioDeluxe {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    opacity: 0.3;
+    filter: brightness(1);
+  }
+  25% {
+    opacity: 0.5;
+    filter: brightness(1.1);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.02);
+    opacity: 0.4;
+    filter: brightness(0.9);
+  }
+  75% {
+    opacity: 0.6;
+    filter: brightness(1.05);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1);
+    opacity: 0.3;
+    filter: brightness(1);
+  }
+}
+
+@keyframes slideInMobile {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes errorAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 ACCESIBILIDAD
+   └───────────────────────────────────────────────────────────── */
+.login-input:focus-visible,
+.login-button:focus-visible,
+.password-toggle:focus-visible,
+.remember-checkbox:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-contrast: high) {
+  .login-input {
+    border-width: 3px;
+  }
+  
+  .login-button {
+    border: 2px solid var(--primary-dark);
+  }
+  
+  .checkbox-custom {
+    border-width: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .elegant-login *,
+  .elegant-login *::before,
+  .elegant-login *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ┌─────────────────────────────────────────────────────────────
+   │ 📱 OPTIMIZACIONES MÓVILES
+   └───────────────────────────────────────────────────────────── */
+@supports (-webkit-touch-callout: none) {
+  .login-input {
+    font-size: 16px !important;
+  }
+}
+
+.elegant-login {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  overscroll-behavior: contain;
+}
+
+@supports (padding: max(0px)) {
+  .elegant-login {
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+  }
+}
