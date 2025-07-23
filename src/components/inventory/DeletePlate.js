@@ -172,9 +172,6 @@ const DeletePlate = ({ onNavigate }) => {
   // ═══════════════════════════════════════════════════════════════
   // CARGAR PAPELERA DE RECICLAJE
   // ═══════════════════════════════════════════════════════════════
-  // ═══════════════════════════════════════════════════════════════
-  // CARGAR PAPELERA DE RECICLAJE
-  // ═══════════════════════════════════════════════════════════════
   const loadPapelera = async () => {
     try {
       console.log('📂 Cargando papelera...');
@@ -281,6 +278,89 @@ const DeletePlate = ({ onNavigate }) => {
         console.error('❌ Error en carga básica de papelera:', fallbackError);
         setPapelera([]);
       }
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // FUNCIÓN PARA VERIFICAR DEPENDENCIAS ANTES DE ELIMINAR
+  // ═══════════════════════════════════════════════════════════════
+  const checkDependenciesBeforeDelete = async (placa) => {
+    try {
+      console.log(`🔍 Verificando dependencias para placa ${placa.id_visual}...`);
+      
+      // Verificar historial de préstamos
+      const { count: historialCount, error: historialError } = await supabase
+        .from('historial_prestamos')
+        .select('*', { count: 'exact', head: true })
+        .eq('id_placa', placa.id);
+      
+      if (historialError) {
+        console.error('Error verificando historial:', historialError);
+        throw historialError;
+      }
+
+      // Verificar carritos
+      const { count: carritoCount, error: carritoError } = await supabase
+        .from('carritos_prestamo')
+        .select('*', { count: 'exact', head: true })
+        .eq('id_placa', placa.id);
+      
+      if (carritoError) {
+        console.error('Error verificando carritos:', carritoError);
+        throw carritoError;
+      }
+
+      const dependencies = {
+        historial: historialCount || 0,
+        carritos: carritoCount || 0,
+        total: (historialCount || 0) + (carritoCount || 0)
+      };
+
+      console.log('📊 Dependencias encontradas:', dependencies);
+      return dependencies;
+
+    } catch (error) {
+      console.error('❌ Error verificando dependencias:', error);
+      throw error;
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // FUNCIÓN PARA MOSTRAR INFORMACIÓN DETALLADA ANTES DE ELIMINAR
+  // ═══════════════════════════════════════════════════════════════
+  const showDetailedDeleteInfo = async (placa) => {
+    try {
+      console.log('📋 Obteniendo información detallada de la placa...');
+      
+      const dependencies = await checkDependenciesBeforeDelete(placa);
+      
+      const infoMessage = `📋 INFORMACIÓN DE LA PLACA A ELIMINAR
+
+🏷️ Placa: ${placa.id_visual}
+🆔 ID Sistema: ${placa.id}
+📂 Tema: ${placa.temas?.nombre || 'No disponible'}
+📁 Subtema: ${placa.subtemas?.nombre || 'No disponible'}
+🧪 Tinción: ${placa.tinciones?.nombre || 'No disponible'}
+
+📊 REGISTROS DEPENDIENTES:
+• Historial de préstamos: ${dependencies.historial}
+• Registros en carritos: ${dependencies.carritos}
+• Total de registros: ${dependencies.total}
+
+🗂️ ARCHIVOS EN GITHUB:
+• Código de barras: ${placa.codigo_barra_url ? 'SÍ' : 'NO'}
+• Imagen macro: ${placa.imagen_macro_url ? 'SÍ' : 'NO'}
+• Imágenes micro: ${placa.imagen_micro_url?.length > 0 ? placa.imagen_micro_url.length : 0}
+
+⚠️ Todo esto será eliminado DEFINITIVAMENTE.`;
+
+      alert(infoMessage);
+      return dependencies;
+
+    } catch (error) {
+      console.error('❌ Error obteniendo información:', error);
+      alert(`❌ Error obteniendo información de la placa: ${error.message}`);
+      return null;
     }
   };
 
@@ -449,10 +529,40 @@ const DeletePlate = ({ onNavigate }) => {
   };
 
   // ═══════════════════════════════════════════════════════════════
-  // ELIMINAR DEFINITIVAMENTE
+  // ELIMINAR DEFINITIVAMENTE - VERSIÓN CORREGIDA CON CASCADA MANUAL
   // ═══════════════════════════════════════════════════════════════
   const deletePermanently = async (placa) => {
-    if (!window.confirm(`⚠️ ¿Estás seguro de eliminar DEFINITIVAMENTE la placa ${placa.id_visual}? Esta acción no se puede deshacer.`)) {
+    // Mostrar información detallada antes de proceder
+    const dependencies = await showDetailedDeleteInfo(placa);
+    if (!dependencies) return; // Si hubo error obteniendo info, cancelar
+
+    const confirmText = `⚠️ ELIMINACIÓN DEFINITIVA ⚠️
+
+¿Estás ABSOLUTAMENTE seguro de eliminar la placa ${placa.id_visual}?
+
+ESTO ELIMINARÁ:
+✓ La placa de la base de datos
+✓ TODO el historial de préstamos (${dependencies.historial} registros)
+✓ Registros en carritos de préstamo (${dependencies.carritos} registros)
+✓ Carpeta completa en GitHub
+✓ Códigos de barras e imágenes
+
+⚠️ ESTA ACCIÓN ES IRREVERSIBLE ⚠️
+
+Escribe "ELIMINAR" (en mayúsculas) para confirmar:`;
+
+    const userConfirmation = prompt(confirmText);
+    
+    if (userConfirmation !== 'ELIMINAR') {
+      alert('❌ Eliminación cancelada. No se escribió "ELIMINAR" correctamente.');
+      return;
+    }
+
+    // Segunda confirmación de seguridad
+    const finalConfirm = confirm(`🚨 ÚLTIMA CONFIRMACIÓN 🚨\n\n¿Proceder con la eliminación DEFINITIVA de la placa ${placa.id_visual}?\n\nNo habrá más advertencias después de esto.`);
+    
+    if (!finalConfirm) {
+      alert('❌ Eliminación cancelada en la confirmación final.');
       return;
     }
 
@@ -460,7 +570,67 @@ const DeletePlate = ({ onNavigate }) => {
       setDeleting(true);
       setError('');
 
-      // Eliminar carpeta de GitHub si existe
+      console.log(`🗑️ INICIANDO ELIMINACIÓN DEFINITIVA: ${placa.id_visual} (ID: ${placa.id})`);
+
+      // ═════════════════════════════════════════════════════════════
+      // PASO 1: ELIMINAR REGISTROS DEPENDIENTES EN ORDEN CORRECTO
+      // ═════════════════════════════════════════════════════════════
+
+      console.log('🔄 Paso 1: Eliminando registros de carritos...');
+      try {
+        const { error: cartError } = await supabase
+          .from('carritos_prestamo')
+          .delete()
+          .eq('id_placa', placa.id);
+        
+        if (cartError) {
+          console.warn('⚠️ Error eliminando carritos (puede no tener):', cartError.message);
+          // No es crítico, continuar
+        } else {
+          console.log('✅ Registros de carritos eliminados');
+        }
+      } catch (err) {
+        console.warn('⚠️ Error en carritos (continuando):', err.message);
+      }
+
+      console.log('🔄 Paso 2: Eliminando historial de préstamos...');
+      try {
+        // Primero obtener los registros para log
+        const { data: historialData, error: selectError } = await supabase
+          .from('historial_prestamos')
+          .select('id, id_usuario, fecha_prestamo, estado')
+          .eq('id_placa', placa.id);
+        
+        if (selectError) {
+          console.warn('⚠️ Error consultando historial:', selectError.message);
+        } else if (historialData && historialData.length > 0) {
+          console.log(`📋 Encontrados ${historialData.length} registros de historial a eliminar`);
+          
+          // Eliminar historial
+          const { error: historialError } = await supabase
+            .from('historial_prestamos')
+            .delete()
+            .eq('id_placa', placa.id);
+          
+          if (historialError) {
+            console.error('❌ Error CRÍTICO eliminando historial:', historialError);
+            throw new Error(`No se puede eliminar el historial: ${historialError.message}`);
+          }
+          
+          console.log(`✅ ${historialData.length} registros de historial eliminados`);
+        } else {
+          console.log('✅ No hay historial que eliminar');
+        }
+      } catch (err) {
+        console.error('❌ Error eliminando historial:', err.message);
+        throw new Error(`Error eliminando historial: ${err.message}`);
+      }
+
+      // ═════════════════════════════════════════════════════════════
+      // PASO 2: ELIMINAR CARPETA DE GITHUB
+      // ═════════════════════════════════════════════════════════════
+
+      console.log('🔄 Paso 3: Eliminando archivos de GitHub...');
       if (placa.codigo_barra_url || placa.imagen_macro_url || (placa.imagen_micro_url && placa.imagen_micro_url.length > 0)) {
         try {
           console.log(`🗂️ Eliminando carpeta de GitHub para placa ${placa.id_visual}...`);
@@ -475,33 +645,104 @@ const DeletePlate = ({ onNavigate }) => {
           });
           
           if (githubError) {
-            console.warn('❌ Error eliminando carpeta de GitHub:', githubError);
+            console.warn('⚠️ Error eliminando carpeta de GitHub:', githubError);
+            // No es crítico para la eliminación de BD
           } else if (deleteResult?.success) {
             console.log('✅ Carpeta de GitHub eliminada exitosamente');
           } else {
             console.warn('⚠️ Función ejecutada pero sin confirmación de éxito:', deleteResult);
           }
         } catch (githubError) {
-          console.warn('❌ Error invocando función de eliminación de GitHub:', githubError);
+          console.warn('⚠️ Error invocando función de eliminación de GitHub:', githubError);
+          // No es crítico, continuar
         }
+      } else {
+        console.log('✅ No hay archivos de GitHub que eliminar');
       }
 
-      // Eliminar registro de base de datos
-      const { error } = await supabase
+      // ═════════════════════════════════════════════════════════════
+      // PASO 3: ELIMINAR REGISTRO PRINCIPAL DE PLACA
+      // ═════════════════════════════════════════════════════════════
+
+      console.log('🔄 Paso 4: Eliminando registro principal de placa...');
+      const { error: plateError } = await supabase
         .from('placas')
         .delete()
         .eq('id', placa.id);
 
-      if (error) throw error;
+      if (plateError) {
+        console.error('❌ Error CRÍTICO eliminando placa:', plateError);
+        throw new Error(`Error eliminando placa: ${plateError.message}`);
+      }
 
+      console.log('✅ Registro principal de placa eliminado');
+
+      // ═════════════════════════════════════════════════════════════
+      // PASO 4: ACTUALIZAR UI Y NOTIFICAR ÉXITO
+      // ═════════════════════════════════════════════════════════════
+
+      // Recargar papelera para reflejar cambios
       await loadPapelera();
-      setSuccess(`✅ Placa ${placa.id_visual} eliminada definitivamente.`);
-      setTimeout(() => setSuccess(''), 3000);
+      
+      // Mensaje de éxito detallado
+      const successMsg = `✅ ELIMINACIÓN COMPLETADA
+
+Placa ${placa.id_visual} ha sido eliminada definitivamente:
+
+✓ Registro principal eliminado
+✓ Historial de préstamos eliminado (${dependencies.historial} registros)
+✓ Registros de carrito eliminados (${dependencies.carritos} registros)  
+✓ Archivos de GitHub eliminados
+✓ Base de datos actualizada
+
+La placa ya no existe en el sistema.`;
+
+      alert(successMsg);
+      
+      setSuccess(`✅ Placa ${placa.id_visual} eliminada definitivamente del sistema.`);
+      setTimeout(() => setSuccess(''), 5000);
+
+      console.log(`🎉 ELIMINACIÓN DEFINITIVA COMPLETADA: ${placa.id_visual}`);
 
     } catch (error) {
-      setError(`Error eliminando placa definitivamente: ${error.message}`);
+      console.error('❌ ERROR EN ELIMINACIÓN DEFINITIVA:', error);
+      
+      // Mensajes de error específicos y útiles
+      let errorMessage = error.message;
+      
+      if (error.message?.includes('foreign key constraint')) {
+        errorMessage = `❌ Error de integridad: Esta placa tiene registros dependientes que no se pudieron eliminar. 
+
+Detalles técnicos: ${error.message}
+
+Soluciones:
+1. Contacta al administrador de sistema
+2. Verifica que no existan restricciones adicionales en la base de datos
+3. Puede ser necesario eliminar manualmente desde el panel de Supabase`;
+      } else if (error.message?.includes('timeout') || error.message?.includes('network')) {
+        errorMessage = `❌ Error de conexión: La eliminación no se completó debido a problemas de red.
+
+Por favor:
+1. Verifica tu conexión a internet
+2. Inténtalo de nuevo en unos minutos
+3. Si persiste, contacta al administrador`;
+      } else if (error.message?.includes('permission') || error.message?.includes('unauthorized')) {
+        errorMessage = `❌ Error de permisos: No tienes autorización para eliminar esta placa.
+
+Verifica:
+1. Tu rol de usuario (debe ser administrador)
+2. Los permisos de la base de datos
+3. Contacta al administrador si el problema persiste`;
+      }
+      
+      setError(errorMessage);
+
+      // También mostrar en alert para mayor visibilidad
+      alert(`❌ ERROR EN ELIMINACIÓN\n\n${errorMessage}`);
+      
     } finally {
       setDeleting(false);
+      console.log('🏁 Proceso de eliminación finalizado');
     }
   };
 

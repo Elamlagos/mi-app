@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import './Sidebar.css'; // 🎨 Importar estilos ultra-profesionales
+import './Sidebar.css';
 
 const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const getUserProfile = async () => {
@@ -35,15 +36,15 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
   }, [user]);
 
   const handleLogout = async () => {
+    setLoggingOut(true);
     await supabase.auth.signOut();
+    window.location.reload();
   };
 
   const toggleSidebar = () => {
     if (window.innerWidth >= 1024) {
-      // Desktop: toggle colapso
       setIsCollapsed(!isCollapsed);
     } else {
-      // Mobile/Tablet: toggle visibilidad
       setIsOpen(!isOpen);
     }
   };
@@ -53,18 +54,18 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
   };
 
   const handleNavigation = (page) => {
-    onNavigate(page);
-    // Cerrar sidebar en mobile después de navegar
+    if (typeof onNavigate === 'function') {
+      onNavigate(page);
+    }
     if (window.innerWidth < 1024) {
       closeSidebar();
     }
   };
 
-  // Manejar resize de ventana
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
-        setIsOpen(false); // Cerrar drawer mobile
+        setIsOpen(false);
       }
     };
 
@@ -72,16 +73,15 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Función para determinar qué secciones puede ver el usuario
   const getVisibleSections = () => {
     if (!userProfile) return { retiros: false, inventario: false, administracion: false };
 
     const { rol, comite } = userProfile;
 
     return {
-      retiros: true, // Todos pueden ver retiros
+      retiros: true,
       inventario: rol === 'administrador' || (rol === 'instructor' && comite === 'microscopia'),
-      administracion: rol === 'administrador' // Solo administradores
+      administracion: rol === 'administrador'
     };
   };
 
@@ -89,14 +89,14 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         height: '100vh',
         background: '#fafafa'
       }}>
-        <div style={{ 
+        <div style={{
           padding: '32px',
           background: 'white',
           borderRadius: '16px',
@@ -115,7 +115,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
     <>
       {/* MOBILE NAV BAR */}
       <div className="mobile-nav-bar">
-        <button 
+        <button
           onClick={toggleSidebar}
           className="mobile-menu-button"
           aria-label="Abrir menú de navegación"
@@ -124,7 +124,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
       </div>
 
       {/* OVERLAY PARA MOBILE */}
-      <div 
+      <div
         className={`sidebar-overlay ${isOpen ? 'active' : ''}`}
         onClick={closeSidebar}
         aria-hidden="true"
@@ -132,26 +132,26 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
 
       {/* SIDEBAR PRINCIPAL */}
       <aside className={`sidebar-container ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
-        
+
         {/* HEADER EJECUTIVO */}
         <div className="sidebar-header">
-          <button 
+          <button
             onClick={toggleSidebar}
             className="sidebar-toggle"
             aria-label={isCollapsed ? 'Expandir menú de navegación' : 'Colapsar menú de navegación'}
           />
-          
+
           {/* Información del usuario */}
           {userProfile && (
             <div className="sidebar-user-info">
               <div className="sidebar-user-name">
                 {userProfile.nombre} {userProfile.apellidos}
               </div>
-              
+
               <div className={`sidebar-user-role ${userProfile.rol === 'administrador' ? 'admin' : 'instructor'}`}>
                 {userProfile.rol === 'administrador' ? 'Administrador' : 'Instructor'}
               </div>
-              
+
               {userProfile.comite && (
                 <div className="sidebar-user-committee">
                   Comité de {userProfile.comite}
@@ -166,14 +166,14 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
 
         {/* NAVEGACIÓN CORPORATIVA */}
         <nav className="sidebar-nav">
-          
+
           {/* SECCIÓN RETIROS */}
           {visibleSections.retiros && (
             <div className="sidebar-nav-section">
               <h3 className="sidebar-nav-title">Retiros</h3>
               <ul className="sidebar-nav-list">
                 <li className="sidebar-nav-item">
-                  <button 
+                  <button
                     onClick={() => handleNavigation('retiro-placas')}
                     className="sidebar-nav-button"
                     title="Retiro de Placas"
@@ -183,7 +183,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                   </button>
                 </li>
                 <li className="sidebar-nav-item">
-                  <button 
+                  <button
                     onClick={() => handleNavigation('retiro-lentes')}
                     className="sidebar-nav-button"
                     title="Retiro de Lentes"
@@ -202,7 +202,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
               <h3 className="sidebar-nav-title">Inventario</h3>
               <ul className="sidebar-nav-list">
                 <li className="sidebar-nav-item">
-                  <button 
+                  <button
                     onClick={() => handleNavigation('inventario-placas')}
                     className="sidebar-nav-button"
                     title="Inventario de Placas"
@@ -212,7 +212,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                   </button>
                 </li>
                 <li className="sidebar-nav-item">
-                  <button 
+                  <button
                     onClick={() => handleNavigation('inventario-lentes')}
                     className="sidebar-nav-button"
                     title="Inventario de Lentes"
@@ -231,7 +231,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
               <h3 className="sidebar-nav-title">Administración</h3>
               <ul className="sidebar-nav-list">
                 <li className="sidebar-nav-item">
-                  <button 
+                  <button
                     onClick={() => handleNavigation('registrar-usuario')}
                     className="sidebar-nav-button"
                     title="Registrar Usuario"
@@ -241,7 +241,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                   </button>
                 </li>
                 <li className="sidebar-nav-item">
-                  <button 
+                  <button
                     onClick={() => handleNavigation('edicion-bd')}
                     className="sidebar-nav-button"
                     title="Edición de Base de Datos"
@@ -263,7 +263,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                 color: '#6b7280',
                 fontSize: '14px'
               }}>
-                <div style={{ 
+                <div style={{
                   width: '48px',
                   height: '48px',
                   margin: '0 auto 16px',
@@ -306,7 +306,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                   Acceso Restringido
                 </p>
                 <p style={{ margin: '0', fontSize: '13px', lineHeight: '1.4' }}>
-                  No tienes permisos para acceder a ninguna sección. 
+                  No tienes permisos para acceder a ninguna sección.
                   Contacta al administrador del sistema.
                 </p>
               </div>
@@ -319,17 +319,19 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
           <div className="sidebar-user-email">
             {user?.email}
           </div>
-          
-          <button 
+
+          <button
             onClick={handleLogout}
             className="sidebar-logout-button"
             title="Cerrar Sesión"
+            aria-label="Cerrar Sesión"
+            disabled={loggingOut}
           >
-            <span>Cerrar Sesión</span>
+            {loggingOut ? 'Cerrando...' : <span>Cerrar Sesión</span>}
           </button>
         </div>
       </aside>
-      
+
       {/* CONTENIDO PRINCIPAL */}
       <main className={`main-content ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
         {children}
