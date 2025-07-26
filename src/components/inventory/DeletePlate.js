@@ -559,7 +559,7 @@ Escribe "ELIMINAR" (en mayúsculas) para confirmar:`;
     }
 
     // Segunda confirmación de seguridad
-    const finalConfirm = confirm(`🚨 ÚLTIMA CONFIRMACIÓN 🚨\n\n¿Proceder con la eliminación DEFINITIVA de la placa ${placa.id_visual}?\n\nNo habrá más advertencias después de esto.`);
+    const finalConfirm = window.confirm(`🚨 ÚLTIMA CONFIRMACIÓN 🚨\n\n¿Proceder con la eliminación DEFINITIVA de la placa ${placa.id_visual}?\n\nNo habrá más advertencias después de esto.`);
     
     if (!finalConfirm) {
       alert('❌ Eliminación cancelada en la confirmación final.');
