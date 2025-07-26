@@ -46,7 +46,7 @@
   
   /* 📐 Dimensiones del sidebar */
   --sidebar-width-full: 280px;
-  --sidebar-width-collapsed: 64px;
+  --sidebar-width-collapsed: 200px;
   --header-height: 64px;
   --nav-item-height: 48px;
   
@@ -376,7 +376,7 @@
   padding: var(--space-5);
   overflow-y: auto;
   overflow-x: hidden;
-  background: transparent;
+  background: linear-gradient(135deg, var(--white) 0%, var(--gray-100) 100%);
 }
 
 .sidebar-nav::-webkit-scrollbar {
@@ -453,9 +453,9 @@
   cursor: pointer;
   transition: all var(--transition-normal);
   border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   position: relative;
   overflow: hidden;
 }
@@ -492,105 +492,11 @@
 
 .sidebar-nav-button:hover {
   color: var(--primary);
-  transform: translateX(2px);
+  transform: translateX(2px) scale(1.02);
 }
 
 .sidebar-nav-button:active {
   transform: translateX(1px);
-}
-
-/* Iconos CSS para navegación */
-.nav-icon {
-  width: 20px;
-  height: 20px;
-  position: relative;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Icono de retiro de placas */
-.nav-icon.plates::before {
-  content: '';
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  border-radius: var(--radius-sm);
-  background: transparent;
-}
-
-/* Icono de retiro de lentes */
-.nav-icon.lenses::before {
-  content: '';
-  width: 12px;
-  height: 12px;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  background: transparent;
-}
-
-/* Icono de inventario de placas */
-.nav-icon.inventory-plates::before {
-  content: '';
-  width: 16px;
-  height: 12px;
-  border: 2px solid currentColor;
-  border-radius: var(--radius-xs);
-  background: transparent;
-  box-shadow: inset 0 0 0 2px currentColor;
-}
-
-/* Icono de inventario de lentes */
-.nav-icon.inventory-lenses::before {
-  content: '';
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  background: transparent;
-  box-shadow: inset 0 0 0 1px currentColor;
-}
-
-/* Icono de usuario */
-.nav-icon.user::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  background: transparent;
-}
-
-.nav-icon.user::after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  width: 12px;
-  height: 6px;
-  border: 2px solid currentColor;
-  border-top: none;
-  border-radius: 0 0 6px 6px;
-  background: transparent;
-}
-
-/* Icono de base de datos */
-.nav-icon.database::before {
-  content: '';
-  width: 14px;
-  height: 10px;
-  border: 2px solid currentColor;
-  border-radius: var(--radius-xs);
-  background: transparent;
-}
-
-.nav-icon.database::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  width: 10px;
-  height: 1px;
-  background: currentColor;
 }
 
 /* ┌─────────────────────────────────────────────────────────────
@@ -645,17 +551,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-xs);
 }
 
-.sidebar-logout-button::before {
-  content: '⏻';
-  font-size: 16px;
-  transition: transform var(--transition-normal);
-}
 
 .sidebar-logout-button:hover {
   background: var(--danger-light);
@@ -665,9 +565,6 @@
   transform: translateY(-1px);
 }
 
-.sidebar-logout-button:hover::before {
-  transform: rotate(180deg);
-}
 
 .sidebar-logout-button:active {
   transform: translateY(0);
@@ -746,10 +643,10 @@
   .sidebar-container.collapsed .sidebar-user-info,
   .sidebar-container.collapsed .sidebar-nav-title,
   .sidebar-container.collapsed .sidebar-user-email {
-    opacity: 0;
-    transform: translateX(-20px);
-    transition: all var(--transition-normal);
-    pointer-events: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+    pointer-events: auto;
   }
   
   .sidebar-container.collapsed .sidebar-header {
@@ -771,16 +668,15 @@
   
   .sidebar-container.collapsed .sidebar-nav-button {
     padding: var(--space-3);
-    justify-content: center;
     position: relative;
   }
   
   .sidebar-container.collapsed .sidebar-nav-button span:last-child {
-    opacity: 0;
-    transform: translateX(20px);
-    transition: all var(--transition-normal);
-    position: absolute;
-    pointer-events: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+    position: static;
+    pointer-events: auto;
   }
   
   .sidebar-container.collapsed .sidebar-footer {
@@ -795,11 +691,11 @@
   }
   
   .sidebar-container.collapsed .sidebar-logout-button span:last-child {
-    opacity: 0;
-    transform: translateX(20px);
-    transition: all var(--transition-normal);
-    position: absolute;
-    pointer-events: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+    position: static;
+    pointer-events: auto;
   }
   
   /* Tooltips para iconos colapsados */
