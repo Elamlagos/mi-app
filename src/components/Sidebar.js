@@ -2,12 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import './Sidebar.css';
 
-const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
+const Sidebar = ({
+  user,
+  children,
+  currentPage = 'Dashboard',
+  currentPageSlug = '',
+  onNavigate
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  const slugMap = {
+    'Dashboard': 'dashboard',
+    'Gestión de Usuarios': 'registrar-usuario',
+    'Registrar Usuario': 'registrar-usuario',
+    'Retiro de Placas': 'retiro-placas',
+    'Retiro de Lentes': 'retiro-lentes',
+    'Inventario de Placas': 'inventario-placas',
+    'Inventario de Lentes': 'inventario-lentes',
+    'Edición de Base de Datos': 'edicion-bd'
+  };
+
+  const activeSlug = currentPageSlug || slugMap[currentPage] || '';
 
   useEffect(() => {
     const getUserProfile = async () => {
@@ -175,7 +194,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                 <li className="sidebar-nav-item">
                   <button
                     onClick={() => handleNavigation('retiro-placas')}
-                    className="sidebar-nav-button"
+                    className={`sidebar-nav-button ${activeSlug === 'retiro-placas' ? 'active' : ''}`}
                     title="Retiro de Placas"
                   >
                     <div className="nav-icon plates"></div>
@@ -185,7 +204,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                 <li className="sidebar-nav-item">
                   <button
                     onClick={() => handleNavigation('retiro-lentes')}
-                    className="sidebar-nav-button"
+                    className={`sidebar-nav-button ${activeSlug === 'retiro-lentes' ? 'active' : ''}`}
                     title="Retiro de Lentes"
                   >
                     <div className="nav-icon lenses"></div>
@@ -204,7 +223,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                 <li className="sidebar-nav-item">
                   <button
                     onClick={() => handleNavigation('inventario-placas')}
-                    className="sidebar-nav-button"
+                    className={`sidebar-nav-button ${activeSlug === 'inventario-placas' ? 'active' : ''}`}
                     title="Inventario de Placas"
                   >
                     <div className="nav-icon inventory-plates"></div>
@@ -214,7 +233,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                 <li className="sidebar-nav-item">
                   <button
                     onClick={() => handleNavigation('inventario-lentes')}
-                    className="sidebar-nav-button"
+                    className={`sidebar-nav-button ${activeSlug === 'inventario-lentes' ? 'active' : ''}`}
                     title="Inventario de Lentes"
                   >
                     <div className="nav-icon inventory-lenses"></div>
@@ -233,7 +252,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                 <li className="sidebar-nav-item">
                   <button
                     onClick={() => handleNavigation('registrar-usuario')}
-                    className="sidebar-nav-button"
+                    className={`sidebar-nav-button ${activeSlug === 'registrar-usuario' ? 'active' : ''}`}
                     title="Registrar Usuario"
                   >
                     <div className="nav-icon user"></div>
@@ -243,7 +262,7 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                 <li className="sidebar-nav-item">
                   <button
                     onClick={() => handleNavigation('edicion-bd')}
-                    className="sidebar-nav-button"
+                    className={`sidebar-nav-button ${activeSlug === 'edicion-bd' ? 'active' : ''}`}
                     title="Edición de Base de Datos"
                   >
                     <div className="nav-icon database"></div>
