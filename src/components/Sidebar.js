@@ -178,7 +178,6 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                     className="sidebar-nav-button"
                     title="Retiro de Placas"
                   >
-                    <div className="nav-icon plates"></div>
                     <span>Retiro de Placas</span>
                   </button>
                 </li>
@@ -188,7 +187,6 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                     className="sidebar-nav-button"
                     title="Retiro de Lentes"
                   >
-                    <div className="nav-icon lenses"></div>
                     <span>Retiro de Lentes</span>
                   </button>
                 </li>
@@ -207,7 +205,6 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                     className="sidebar-nav-button"
                     title="Inventario de Placas"
                   >
-                    <div className="nav-icon inventory-plates"></div>
                     <span>Inventario de Placas</span>
                   </button>
                 </li>
@@ -217,7 +214,6 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                     className="sidebar-nav-button"
                     title="Inventario de Lentes"
                   >
-                    <div className="nav-icon inventory-lenses"></div>
                     <span>Inventario de Lentes</span>
                   </button>
                 </li>
@@ -236,7 +232,6 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                     className="sidebar-nav-button"
                     title="Registrar Usuario"
                   >
-                    <div className="nav-icon user"></div>
                     <span>Registrar Usuario</span>
                   </button>
                 </li>
@@ -246,7 +241,6 @@ const Sidebar = ({ user, children, currentPage = 'Dashboard', onNavigate }) => {
                     className="sidebar-nav-button"
                     title="Edición de Base de Datos"
                   >
-                    <div className="nav-icon database"></div>
                     <span>Edición de Base de Datos</span>
                   </button>
                 </li>
