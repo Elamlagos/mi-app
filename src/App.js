@@ -308,9 +308,10 @@ function App() {
   return (
     <div>
       {user ? (
-        <Sidebar 
-          user={user} 
+        <Sidebar
+          user={user}
           currentPage={getPageName()}
+          currentPageSlug={currentPage}
           onNavigate={handleNavigation}
         >
           {renderCurrentPage()}

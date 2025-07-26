@@ -499,6 +499,16 @@
   transform: translateX(1px);
 }
 
+.sidebar-nav-button.active,
+.sidebar-nav-button.active:hover {
+  background: var(--primary-hover);
+  color: var(--primary);
+}
+
+.sidebar-nav-button.active::before {
+  width: 3px;
+}
+
 /* Iconos CSS para navegación */
 .nav-icon {
   width: 20px;
@@ -822,6 +832,15 @@
     z-index: 100;
     opacity: 1;
     box-shadow: var(--shadow-lg);
+  }
+
+  .sidebar-container.collapsed .sidebar-nav-button.active {
+    background: var(--primary-hover);
+    color: var(--primary);
+  }
+
+  .sidebar-container.collapsed .sidebar-nav-button.active::before {
+    width: 3px;
   }
 }
 
