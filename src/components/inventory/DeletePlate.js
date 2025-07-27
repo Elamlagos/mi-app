@@ -1,6 +1,6 @@
 // 🗑️ DELETE PLATE COMPONENT - ELIMINACIÓN CON PAPELERA DE RECICLAJE
 // Archivo: src/components/inventory/DeletePlate.js
-
+//a
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 
